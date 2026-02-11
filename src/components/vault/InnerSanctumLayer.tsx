@@ -7,7 +7,7 @@ interface InnerSanctumLayerProps {
   musicPlaying: boolean;
 }
 
-const TREASURE_IMG = "https://res.cloudinary.com/dswpi1pb9/image/upload/v1770557425/asset_apperol_gaoaab.png";
+const TREASURE_IMG = "https://res.cloudinary.com/dswpi1pb9/image/upload/v1770557448/asset_aperol_d2nwy0.png";
 
 export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
   isActive,
@@ -102,48 +102,87 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
     }
   }, []);
 
-  // Main sequence
+  // Main sequence - FLUID AGENCY PRO TIMING
   useEffect(() => {
     if (!isActive || phase !== 'door') return;
 
     // Door sequence
     setTimeout(() => {
-      playSound('slam');
+      playSound('slam'); // 200ms
 
       setTimeout(() => {
-        setHandleRotation(720);
+        setHandleRotation(720); // 400ms
         playSound('unlock');
 
         setTimeout(() => {
-          playSound('grind');
+          playSound('grind'); // 800ms
           setDoorOpening(true);
 
           setTimeout(() => {
-            setPhase('folder-closed');
-            spawnConfetti(50);
+            setPhase('folder-closed'); // Folder appears closed
 
+            // Allow user to digest "Confidential" for a longer moment
             setTimeout(() => {
               playPaper();
-              setPhase('folder-opening');
+              setPhase('folder-opening'); // Folder starts opening (Book style)
 
+              // The CSS animation takes ~1.8s. We reveal the contents once fully open.
               setTimeout(() => {
+                // Trigger confetti synced with folder fully open
+                spawnConfetti(50);
                 setPhase('revealed');
-                spawnConfetti(100);
-              }, 1800);
-            }, 1200);
-          }, 600);
-        }, 500);
-      }, 500);
-    }, 300);
+              }, 1200); // Synced with longer animation
+
+            }, 1600); // Long pause to see CONFIDENTIAL
+          }, 1800); // Slow transition from door → folder
+        }, 400);
+      }, 400);
+    }, 200);
   }, [isActive, phase, playSound, playPaper, spawnConfetti]);
 
-  // PREMIUM cheers effect
+  // Cheers Easter Egg Logic
+  const [cheersCount, setCheersCount] = useState(0);
+  const [drunkLevel, setDrunkLevel] = useState(0);
+  const ghostRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // PREMIUM cheers effect with Easter Egg
   const handleCheers = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
+    const newCount = cheersCount + 1;
+    setCheersCount(newCount);
+
     playGlass();
     if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
+
+    // Easter Egg Messages
+    let message = "¡CHIN CHIN!";
+    let emoji = "";
+
+    if (newCount === 3) {
+      message = "¿OTRO MÁS?";
+      emoji = "🥴";
+    } else if (newCount >= 4 && newCount < 8) {
+      const msgs = [
+        "¿OTRA RONDA?",
+        "¡SALUD!",
+        "¡NO ROMPAS LA COPA!",
+        "¡FONDO BLANCO!",
+        "¡CHIN CHIN!",
+        "¡QUÉ RICO APEROL!",
+        "¡ME MAREO...!",
+        "¡ARRIBA, ABAJO...!"
+      ];
+      message = msgs[Math.floor(Math.random() * msgs.length)];
+      emoji = "🤪";
+    } else if (newCount === 8) {
+      message = "¿OTRO? QUÉ GOLOSA";
+      emoji = "🤓";
+    } else if (newCount >= 9) {
+      message = "SUFICIENTE POR HOY...";
+      emoji = "🛑";
+    }
 
     // Get position
     let x: number, y: number;
@@ -165,6 +204,7 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
         position: fixed;
         inset: 0;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
         z-index: 99999;
@@ -182,8 +222,10 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
             0 0 60px rgba(255, 100, 0, 0.7),
             0 4px 20px rgba(0, 0, 0, 0.8);
           letter-spacing: 3px;
+          text-align: center;
           animation: toastPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        ">¡CHIN CHIN!</div>
+        ">${message}</div>
+        <div style="font-size: 60px; margin-top: 10px; animation: toastPop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);">${emoji}</div>
       </div>
     `;
     document.body.appendChild(toast);
@@ -245,7 +287,68 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
       document.body.appendChild(s);
       setTimeout(() => s.remove(), 700);
     }
-  }, [playGlass]);
+
+    // === DRUNK SWAY + DOUBLE VISION from click 4+ ===
+    if (newCount >= 4) {
+      const intensity = Math.min(newCount - 3, 6);
+      setDrunkLevel(intensity);
+
+      const scene = document.querySelector('.folder-3d-scene') as HTMLElement;
+      if (scene) {
+        const swayDeg = 0.8 * intensity;
+        const swayPx = 1.5 * intensity;
+        scene.style.animation = 'none';
+        scene.offsetHeight; // force reflow
+        scene.style.animation = `drunkSway ${Math.max(2.5 - intensity * 0.15, 1)}s ease-in-out infinite`;
+        scene.style.setProperty('--sway-deg', `${swayDeg}deg`);
+        scene.style.setProperty('--sway-px', `${swayPx}px`);
+      }
+    }
+  }, [playGlass, cheersCount]);
+
+  // DOUBLE VISION: touch-drag ghost parallax
+  useEffect(() => {
+    if (drunkLevel <= 0) return;
+
+    const zone = document.querySelector('.evidence-photo-zone') as HTMLElement;
+    if (!zone) return;
+
+    const maxShift = 4 + drunkLevel * 3; // 7px to 22px max
+
+    const handleMove = (clientX: number, clientY: number) => {
+      const rect = zone.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = ((clientX - cx) / rect.width) * maxShift;
+      const dy = ((clientY - cy) / rect.height) * maxShift;
+      ghostRef.current = { x: dx, y: dy };
+      zone.style.setProperty('--ghost-x', `${dx}px`);
+      zone.style.setProperty('--ghost-y', `${dy}px`);
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches[0]) handleMove(e.touches[0].clientX, e.touches[0].clientY);
+    };
+    const onMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY);
+
+    const onEnd = () => {
+      // Drift back slowly
+      zone.style.setProperty('--ghost-x', '0px');
+      zone.style.setProperty('--ghost-y', '0px');
+    };
+
+    zone.addEventListener('touchmove', onTouchMove, { passive: true });
+    zone.addEventListener('mousemove', onMouseMove);
+    zone.addEventListener('touchend', onEnd);
+    zone.addEventListener('mouseleave', onEnd);
+
+    return () => {
+      zone.removeEventListener('touchmove', onTouchMove);
+      zone.removeEventListener('mousemove', onMouseMove);
+      zone.removeEventListener('touchend', onEnd);
+      zone.removeEventListener('mouseleave', onEnd);
+    };
+  }, [drunkLevel]);
 
   return (
     <div id="inner-sanctum" className={`layer ${isActive ? 'active' : ''}`}>
@@ -269,72 +372,92 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
         </div>
       )}
 
-      {/* FOLDER CLOSED */}
-      {phase === 'folder-closed' && (
-        <div className="premium-closed-folder">
-          <div className="closed-cover">
-            <div className="grain"></div>
-            <div className="confidential-badge">
-              <span className="badge-main">CONFIDENCIAL</span>
-              <span className="badge-sub">NIVEL A-1</span>
-            </div>
-            <div className="hazard-bar"></div>
-          </div>
-        </div>
-      )}
+      {/* AMBIENT BACKGROUND */}
+      <div className={`ambient-background ${phase === 'revealed' ? 'visible' : ''}`} />
 
-      {/* FOLDER OPENING */}
-      {phase === 'folder-opening' && (
-        <div className="premium-folder-scene">
-          <div className="folder-base-layer"></div>
-          <div className="folder-cover-opening">
-            <div className="grain"></div>
-            <div className="confidential-badge">
-              <span className="badge-main">CONFIDENCIAL</span>
-              <span className="badge-sub">NIVEL A-1</span>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 3D FOLDER SCENE — only dossier + photo inside */}
+      <div className={`folder-3d-scene ${(phase === 'revealed' || phase === 'folder-opening') ? 'open' : ''}`}>
 
-      {/* REVEALED - FOLDER + BUTTONS SEPARATE */}
-      {phase === 'revealed' && (
-        <div className="revealed-layout">
-          {/* Dossier */}
-          <div className="dossier-card">
-            <div className="dossier-topbar">
-              <span>🔴 CLASIFICADO</span>
-              <span>REF: 23-G</span>
+        {/* FOLDER BACK COVER (Base) */}
+        <div className="folder-back">
+          {/* DOSSIER — only the sheet with the evidence photo */}
+          <div className="dossier-paper">
+            <div className="paper-texture"></div>
+
+            <div className="dossier-header">
+              <span className="stamp-box">TOP SECRET</span>
+              <span className="ref-code">REF: 23-G // AGENT COTY</span>
             </div>
 
             <div
-              className="photo-touch-zone"
+              className="evidence-photo-zone"
               onClick={handleCheers}
               onTouchStart={handleCheers}
+              style={{ touchAction: 'manipulation' }}
             >
-              <div className="photo-clip"></div>
-              <div className="photo-frame">
-                <img src={TREASURE_IMG} alt="" />
+              <div className="photo-corner-tapes"></div>
+              <div
+                className="evidence-photo-frame"
+                style={{
+                  transform: cheersCount >= 1 && cheersCount <= 3
+                    ? `scale(${1 + cheersCount * 0.08}) translateZ(${cheersCount * 10}px)`
+                    : 'scale(1)',
+                  zIndex: cheersCount >= 1 && cheersCount <= 3 ? 100 + cheersCount : 1,
+                  transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                }}
+              >
+                <img
+                  src={TREASURE_IMG}
+                  alt="Evidence"
+                  style={{ transition: 'all 0.3s ease' }}
+                />
+                {/* DOUBLE VISION GHOST — semi-transparent offset duplicate */}
+                {drunkLevel > 0 && (
+                  <img
+                    src={TREASURE_IMG}
+                    alt=""
+                    className="drunk-ghost-img"
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      opacity: 0.15 + drunkLevel * 0.06,
+                      transform: `translate(var(--ghost-x, ${3 + drunkLevel}px), var(--ghost-y, ${2 + drunkLevel * 0.5}px))`,
+                      filter: `blur(${0.5 + drunkLevel * 0.3}px) hue-rotate(${drunkLevel * 5}deg)`,
+                      mixBlendMode: 'screen',
+                      pointerEvents: 'none',
+                      transition: 'transform 0.3s ease-out, opacity 0.4s ease, filter 0.4s ease',
+                    }}
+                  />
+                )}
               </div>
-              <div className="touch-hint">👆 Toca para brindar</div>
-            </div>
-
-            <div className="dossier-info">
-              <div>ACCESO: <b>CONCEDIDO ✓</b></div>
-              <div>VOUCHER: <b>ACTIVADO</b></div>
             </div>
           </div>
+        </div>
 
-          {/* BUTTONS - COMPLETELY SEPARATE */}
-          <div className="action-zone">
-            <button className="main-action-btn" onClick={toggleMusic}>
-              {musicPlaying ? '⏸️ PAUSAR MÚSICA' : '🍹 IMAGINA QUE BRINDAMOS'}
-            </button>
-            <p className="action-hint">🎧 Mejor con auriculares</p>
-            <button className="secondary-action-btn" onClick={() => window.location.reload()}>
-              🏠 VOLVER AL INICIO
-            </button>
+        {/* FOLDER FRONT COVER (Animates open — book-style flip) */}
+        <div className="folder-front">
+          <div className="folder-label-sticker">
+            <span className="typwriter-text">CONFIDENTIAL</span>
+            <div className="stamps-row" />
           </div>
+          <div className="metallic-fastener"></div>
+        </div>
+
+      </div>
+
+      {/* ACTION BUTTONS — outside the folder, only visible after reveal */}
+      {phase === 'revealed' && (
+        <div className="action-footer-independent">
+          <button className="btn-primary-action" onClick={toggleMusic}>
+            {musicPlaying ? '⏸ PAUSAR MÚSICA' : '🍹 IMAGINA QUE BRINDAMOS'}
+          </button>
+          <div className="action-hint-text">🎧 Usar Auriculares</div>
+          <button className="btn-secondary-action" onClick={() => window.location.reload()}>
+            🔄 REPETIR EXPERIENCIA
+          </button>
         </div>
       )}
 
@@ -362,6 +485,13 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
           0% { transform: scale(0.3); opacity: 0; }
           50% { transform: scale(1.1); }
           100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes drunkSway {
+          0% { transform: translate(-50%, -50%) rotate(0deg) translateX(0); }
+          25% { transform: translate(-50%, -50%) rotate(var(--sway-deg, 1deg)) translateX(var(--sway-px, 2px)); }
+          50% { transform: translate(-50%, -50%) rotate(0deg) translateX(0); }
+          75% { transform: translate(-50%, -50%) rotate(calc(var(--sway-deg, 1deg) * -1)) translateX(calc(var(--sway-px, 2px) * -1)); }
+          100% { transform: translate(-50%, -50%) rotate(0deg) translateX(0); }
         }
       `}</style>
     </div>
