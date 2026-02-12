@@ -7,7 +7,7 @@ interface InnerSanctumLayerProps {
   musicPlaying: boolean;
 }
 
-const TREASURE_IMG = "https://res.cloudinary.com/dswpi1pb9/image/upload/v1770557448/asset_aperol_d2nwy0.png";
+const TREASURE_IMG = "https://res.cloudinary.com/dswpi1pb9/image/upload/v1770844431/C3252582-9233-46E3-B324-E6B79C99FADF_roxpw7.png";
 
 export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
   isActive,
@@ -18,6 +18,18 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
   const [phase, setPhase] = useState<'door' | 'folder-closed' | 'folder-opening' | 'revealed'>('door');
   const [handleRotation, setHandleRotation] = useState(0);
   const [doorOpening, setDoorOpening] = useState(false);
+  const [aspectRatio, setAspectRatio] = useState(1.6); // Default vertical ratio
+
+  // Preload image and get aspect ratio
+  useEffect(() => {
+    const img = new Image();
+    img.src = TREASURE_IMG;
+    img.onload = () => {
+      const ratio = img.naturalHeight / img.naturalWidth;
+      setAspectRatio(ratio);
+      document.documentElement.style.setProperty('--image-aspect-ratio', ratio.toString());
+    };
+  }, []);
 
   const audioCtxRef = useRef<AudioContext | null>(null);
 
@@ -56,31 +68,45 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
     } catch (e) { }
   }, [getAudioContext]);
 
-  // PREMIUM glass clink with rich harmonics
+  // PLAY GLASS SOUND - REALISTIC BASE64 (Short clear clink)
   const playGlass = useCallback(() => {
-    try {
-      const ctx = getAudioContext();
-      const now = ctx.currentTime;
+    if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const ctx = audioCtxRef.current;
+    if (ctx.state === 'suspended') ctx.resume();
 
-      // Rich crystal harmonics
-      const freqs = [2800, 4200, 5600, 7000, 8400];
-      freqs.forEach((f, i) => {
-        const osc = ctx.createOscillator();
-        const g = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.value = f + Math.random() * 30;
-        const vol = 0.08 / (i + 1);
-        g.gain.setValueAtTime(0, now);
-        g.gain.linearRampToValueAtTime(vol, now + 0.003);
-        g.gain.exponentialRampToValueAtTime(0.0001, now + 0.7);
-        osc.connect(g).connect(ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.7);
-      });
-    } catch (e) {
-      playSound('clink');
-    }
-  }, [getAudioContext, playSound]);
+    const t = ctx.currentTime;
+
+    // 1. IMPACT THUD (The physical hit)
+    const impactOsc = ctx.createOscillator();
+    const impactGain = ctx.createGain();
+    impactOsc.frequency.setValueAtTime(150, t);
+    impactOsc.frequency.exponentialRampToValueAtTime(40, t + 0.1);
+    impactGain.gain.setValueAtTime(0.5, t);
+    impactGain.gain.exponentialRampToValueAtTime(0.01, t + 0.05);
+    impactOsc.connect(impactGain).connect(ctx.destination);
+    impactOsc.start(t);
+    impactOsc.stop(t + 0.05);
+
+    // 2. GLASS RINGING (Harmonics)
+    const freqs = [2200, 2800, 3600, 5200];
+    freqs.forEach((f, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f, t);
+      // Slight detune for realism
+      osc.frequency.linearRampToValueAtTime(f + (Math.random() - 0.5) * 50, t + 1);
+
+      const vol = 0.2 / (i + 1);
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(vol, t + 0.005);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 1.2 - i * 0.2);
+
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 1.2);
+    });
+  }, []);
 
   // Confetti rain
   const spawnConfetti = useCallback((count = 80) => {
@@ -123,7 +149,7 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
 
             // Allow user to digest "Confidential" for a longer moment
             setTimeout(() => {
-              playPaper();
+              playPaper(); // Crisp paper sound
               setPhase('folder-opening'); // Folder starts opening (Book style)
 
               // The CSS animation takes ~1.8s. We reveal the contents once fully open.
@@ -140,12 +166,13 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
     }, 200);
   }, [isActive, phase, playSound, playPaper, spawnConfetti]);
 
-  // Cheers Easter Egg Logic
+  // CHEERS LOGIC - BEER ONLY & BIFURCATION
   const [cheersCount, setCheersCount] = useState(0);
   const [drunkLevel, setDrunkLevel] = useState(0);
-  const ghostRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // PREMIUM cheers effect with Easter Egg
+  // Bifurcation offset state - Permanent separation based on drunk level
+  const [bifurcation, setBifurcation] = useState({ x: 0, y: 0 });
+
   const handleCheers = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -154,201 +181,139 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
     setCheersCount(newCount);
 
     playGlass();
-    if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
+    if (navigator.vibrate) navigator.vibrate([30, 50, 30]); // Crisp tap feel
 
-    // Easter Egg Messages
-    let message = "¡CHIN CHIN!";
-    let emoji = "";
+    // STRICT PHRASE LOGIC - Forced
+    let message = "¡SALUD! 🍻";
+    let isSmallLow = false;
 
-    if (newCount === 3) {
-      message = "¿OTRO MÁS?";
-      emoji = "🥴";
-    } else if (newCount >= 4 && newCount < 8) {
-      const msgs = [
-        "¿OTRA RONDA?",
-        "¡SALUD!",
-        "¡NO ROMPAS LA COPA!",
-        "¡FONDO BLANCO!",
-        "¡CHIN CHIN!",
-        "¡QUÉ RICO APEROL!",
-        "¡ME MAREO...!",
-        "¡ARRIBA, ABAJO...!"
-      ];
-      message = msgs[Math.floor(Math.random() * msgs.length)];
-      emoji = "🤪";
-    } else if (newCount === 8) {
-      message = "¿OTRO? QUÉ GOLOSA";
-      emoji = "🤓";
-    } else if (newCount >= 9) {
-      message = "SUFICIENTE POR HOY...";
-      emoji = "🛑";
+    if (newCount === 1) message = "¡CHIN CHIN! 🍻";
+    else if (newCount === 2) message = "¡SALUD! 🍻";
+    else if (newCount === 3) message = "¡OTRA! 🍺";
+    else if (newCount === 4) {
+      message = "Otro? 🍺";
+      isSmallLow = true;
+    }
+    else if (newCount === 5) {
+      message = "¿Estas segura? 🤨";
+      isSmallLow = true;
+    }
+    else if (newCount === 6) {
+      message = "¡Que golosa! 🤤";
+      isSmallLow = true;
+    }
+    else if (newCount >= 7) {
+      message = "¡Te la vas a dar en la pera! 🍐🥴";
+      isSmallLow = true;
     }
 
-    // Get position
-    let x: number, y: number;
-    if ('touches' in e && e.touches[0]) {
-      x = e.touches[0].clientX;
-      y = e.touches[0].clientY;
-    } else if ('clientX' in e) {
-      x = e.clientX;
-      y = e.clientY;
+    // A. GLASS POP VISUAL
+    // (We do this here to sync with the click)
+    const glassPop = document.createElement('div');
+    glassPop.className = 'phantom-glass-pop';
+    glassPop.style.left = `${(e as any).clientX || (e as any).touches?.[0]?.clientX || 0}px`;
+    glassPop.style.top = `${(e as any).clientY || (e as any).touches?.[0]?.clientY || 0}px`;
+    document.body.appendChild(glassPop);
+    setTimeout(() => glassPop.remove(), 600);
+
+    // B. PHOTO 3D POPBACK
+    const folder = document.querySelector('.folder-3d-scene') as HTMLElement;
+    if (folder) {
+      folder.classList.remove('pop-back-anim');
+      void folder.offsetWidth;
+      folder.classList.add('pop-back-anim');
+    }
+
+    // Get click position accurately
+    let clientX, clientY;
+    if ('touches' in e && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else if ('changedTouches' in e && e.changedTouches.length > 0) { // Handle touchend/click
+      clientX = e.changedTouches[0].clientX;
+      clientY = e.changedTouches[0].clientY;
     } else {
-      x = window.innerWidth / 2;
-      y = window.innerHeight / 2;
+      clientX = (e as React.MouseEvent).clientX;
+      clientY = (e as React.MouseEvent).clientY;
     }
 
-    // Premium toast overlay
-    const toast = document.createElement('div');
-    toast.innerHTML = `
-      <div style="
-        position: fixed;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        z-index: 99999;
-        pointer-events: none;
-        animation: toastFade 1.2s ease-out forwards;
-      ">
-        <div style="
-          font-family: 'Times New Roman', Georgia, serif;
-          font-size: clamp(32px, 10vw, 56px);
-          font-weight: 700;
-          font-style: italic;
-          color: white;
-          text-shadow: 
-            0 0 30px rgba(255, 140, 50, 1),
-            0 0 60px rgba(255, 100, 0, 0.7),
-            0 4px 20px rgba(0, 0, 0, 0.8);
-          letter-spacing: 3px;
-          text-align: center;
-          animation: toastPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        ">${message}</div>
-        <div style="font-size: 60px; margin-top: 10px; animation: toastPop 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);">${emoji}</div>
-      </div>
-    `;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 1500);
-
-    // Luxury bubbles explosion
-    for (let i = 0; i < 60; i++) {
+    // 1. BEER BUBBLES ONLY (No sparkles)
+    for (let i = 0; i < 40; i++) {
       const b = document.createElement('div');
-      const size = 6 + Math.random() * 16;
-      const angle = (Math.random() - 0.5) * Math.PI;
-      const distance = 60 + Math.random() * 140;
-      const dx = Math.cos(angle) * distance;
-      const dy = -40 - Math.random() * 160;
+      const isFoam = Math.random() > 0.6;
+      b.className = isFoam ? 'beer-foam-particle' : 'beer-liquid-particle';
 
-      b.style.cssText = `
-        position: fixed;
-        left: ${x}px;
-        top: ${y}px;
-        width: ${size}px;
-        height: ${size}px;
-        border-radius: 50%;
-        background: radial-gradient(circle at 30% 25%, 
-          rgba(255, 220, 170, 0.95) 0%, 
-          rgba(255, 170, 90, 0.9) 35%, 
-          rgba(255, 130, 50, 0.8) 100%);
-        box-shadow: 
-          inset 0 -2px 4px rgba(255, 200, 140, 0.6),
-          inset 0 2px 3px rgba(255, 255, 255, 0.7),
-          0 0 20px rgba(255, 150, 60, 0.6);
-        z-index: 99998;
-        pointer-events: none;
-        animation: luxuryBubble ${0.6 + Math.random() * 0.5}s ease-out forwards;
-        --dx: ${dx}px;
-        --dy: ${dy}px;
-      `;
+      const size = isFoam ? 5 + Math.random() * 10 : 4 + Math.random() * 8;
+      b.style.setProperty('--size', `${size}px`);
+      b.style.left = `${clientX}px`;
+      b.style.top = `${clientY}px`;
+
+      // Explosion outwards
+      const angle = Math.random() * Math.PI * 2;
+      const velocity = 30 + Math.random() * 100;
+      const tx = Math.cos(angle) * velocity;
+      const ty = Math.sin(angle) * velocity - 50; // Slight upward bias
+
+      b.style.transform = `translate(${tx}px, ${ty}px)`;
+      b.style.setProperty('--dur', `${0.6 + Math.random() * 0.8}s`);
+
       document.body.appendChild(b);
-      setTimeout(() => b.remove(), 1200);
+      setTimeout(() => b.remove(), 1500);
     }
 
-    // Golden sparkles burst
-    for (let i = 0; i < 16; i++) {
-      const s = document.createElement('div');
-      const angle = (i / 16) * Math.PI * 2;
-      const dist = 50 + Math.random() * 60;
+    // 2. TOAST MESSAGE AT CLICK POSITION
+    const toast = document.createElement('div');
+    toast.className = `toast-text active ${isSmallLow ? 'toast-small-low' : ''}`;
+    toast.innerHTML = message;
 
-      s.textContent = ['✨', '⭐', '💫'][Math.floor(Math.random() * 3)];
-      s.style.cssText = `
-        position: fixed;
-        left: ${x}px;
-        top: ${y}px;
-        font-size: ${16 + Math.random() * 12}px;
-        z-index: 99999;
-        pointer-events: none;
-        filter: drop-shadow(0 0 8px rgba(255, 200, 80, 0.9));
-        animation: sparkBurst 0.6s ease-out forwards;
-        --sx: ${Math.cos(angle) * dist}px;
-        --sy: ${Math.sin(angle) * dist - 30}px;
-      `;
-      document.body.appendChild(s);
-      setTimeout(() => s.remove(), 700);
-    }
+    // Position: If small/low, force it to bottom center relative to click or fixed?
+    const yOffset = isSmallLow ? 80 : -50;
 
-    // === DRUNK SWAY + DOUBLE VISION from click 4+ ===
-    if (newCount >= 4) {
-      const intensity = Math.min(newCount - 3, 6);
-      setDrunkLevel(intensity);
+    toast.style.left = `${clientX}px`;
+    toast.style.top = `${clientY + yOffset}px`;
 
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2500);
+
+    // 3. DRUNK & BIFURCATION LOGIC
+    // Bifurcation starts getting noticeable at click 3
+    if (newCount >= 3) {
+      const level = Math.min(newCount - 2, 8); // Cap at level 8
+      setDrunkLevel(level);
+
+      // Randomize bifurcation direction each click, but magnitude increases
+      const angle = Math.random() * Math.PI * 2;
+      const distance = level * 3; // 3px separation per level -> max 24px
+
+      setBifurcation({
+        x: Math.cos(angle) * distance,
+        y: Math.sin(angle) * distance
+      });
+
+      // Screen shake effect on the scene
       const scene = document.querySelector('.folder-3d-scene') as HTMLElement;
       if (scene) {
-        const swayDeg = 0.8 * intensity;
-        const swayPx = 1.5 * intensity;
-        scene.style.animation = 'none';
-        scene.offsetHeight; // force reflow
-        scene.style.animation = `drunkSway ${Math.max(2.5 - intensity * 0.15, 1)}s ease-in-out infinite`;
-        scene.style.setProperty('--sway-deg', `${swayDeg}deg`);
-        scene.style.setProperty('--sway-px', `${swayPx}px`);
+        scene.classList.remove('shake-anim');
+        void scene.offsetWidth; // Trigger reflow
+        scene.classList.add('shake-anim');
+
+        if (level > 2) {
+          scene.classList.add('drunk-active');
+          // Set CSS vars for global blur/aberration if needed
+          document.documentElement.style.setProperty('--drunk-blur', `${level * 0.5}px`);
+        }
       }
     }
-  }, [playGlass, cheersCount]);
+  }, [cheersCount, playGlass]);
 
-  // DOUBLE VISION: touch-drag ghost parallax
+  // Pass bifurcation to CSS variables on the photo zone
   useEffect(() => {
-    if (drunkLevel <= 0) return;
-
-    const zone = document.querySelector('.evidence-photo-zone') as HTMLElement;
-    if (!zone) return;
-
-    const maxShift = 4 + drunkLevel * 3; // 7px to 22px max
-
-    const handleMove = (clientX: number, clientY: number) => {
-      const rect = zone.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      const dx = ((clientX - cx) / rect.width) * maxShift;
-      const dy = ((clientY - cy) / rect.height) * maxShift;
-      ghostRef.current = { x: dx, y: dy };
-      zone.style.setProperty('--ghost-x', `${dx}px`);
-      zone.style.setProperty('--ghost-y', `${dy}px`);
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      if (e.touches[0]) handleMove(e.touches[0].clientX, e.touches[0].clientY);
-    };
-    const onMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY);
-
-    const onEnd = () => {
-      // Drift back slowly
-      zone.style.setProperty('--ghost-x', '0px');
-      zone.style.setProperty('--ghost-y', '0px');
-    };
-
-    zone.addEventListener('touchmove', onTouchMove, { passive: true });
-    zone.addEventListener('mousemove', onMouseMove);
-    zone.addEventListener('touchend', onEnd);
-    zone.addEventListener('mouseleave', onEnd);
-
-    return () => {
-      zone.removeEventListener('touchmove', onTouchMove);
-      zone.removeEventListener('mousemove', onMouseMove);
-      zone.removeEventListener('touchend', onEnd);
-      zone.removeEventListener('mouseleave', onEnd);
-    };
-  }, [drunkLevel]);
+    const zone = document.querySelector('.polaroid-wrapper') as HTMLElement;
+    if (zone) {
+      zone.style.setProperty('--bif-x', `${bifurcation.x}px`);
+      zone.style.setProperty('--bif-y', `${bifurcation.y}px`);
+    }
+  }, [bifurcation]);
 
   return (
     <div id="inner-sanctum" className={`layer ${isActive ? 'active' : ''}`}>
@@ -384,55 +349,73 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
           <div className="dossier-paper">
             <div className="paper-texture"></div>
 
-            <div className="dossier-header">
-              <span className="stamp-box">TOP SECRET</span>
-              <span className="ref-code">REF: 23-G // AGENT COTY</span>
+            {/* HEADER: Stamps & Ref Code - OUTSIDE PHOTO */}
+            <div className="dossier-header-section">
+              <div className="stamp-box">TOP SECRET</div>
+              <div className="ref-code">REF: 23-G // AGENT COTY</div>
             </div>
 
+            {/* BODY: The Polaroid Photo */}
             <div
-              className="evidence-photo-zone"
+              className="dossier-body-section"
               onClick={handleCheers}
               onTouchStart={handleCheers}
-              style={{ touchAction: 'manipulation' }}
             >
-              <div className="photo-corner-tapes"></div>
               <div
-                className="evidence-photo-frame"
+                className="polaroid-wrapper"
                 style={{
                   transform: cheersCount >= 1 && cheersCount <= 3
-                    ? `scale(${1 + cheersCount * 0.08}) translateZ(${cheersCount * 10}px)`
-                    : 'scale(1)',
-                  zIndex: cheersCount >= 1 && cheersCount <= 3 ? 100 + cheersCount : 1,
-                  transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                    ? `scale(${1 + cheersCount * 0.05}) rotate(${2 + cheersCount}deg)`
+                    : 'rotate(2deg)',
+                  transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)'
                 }}
               >
-                <img
-                  src={TREASURE_IMG}
-                  alt="Evidence"
-                  style={{ transition: 'all 0.3s ease' }}
-                />
-                {/* DOUBLE VISION GHOST — semi-transparent offset duplicate */}
-                {drunkLevel > 0 && (
-                  <img
-                    src={TREASURE_IMG}
-                    alt=""
-                    className="drunk-ghost-img"
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      opacity: 0.15 + drunkLevel * 0.06,
-                      transform: `translate(var(--ghost-x, ${3 + drunkLevel}px), var(--ghost-y, ${2 + drunkLevel * 0.5}px))`,
-                      filter: `blur(${0.5 + drunkLevel * 0.3}px) hue-rotate(${drunkLevel * 5}deg)`,
-                      mixBlendMode: 'screen',
-                      pointerEvents: 'none',
-                      transition: 'transform 0.3s ease-out, opacity 0.4s ease, filter 0.4s ease',
-                    }}
-                  />
-                )}
+                {/* METAL CLIP - Holds the photo */}
+                <div className="bull-clip-container">
+                  <div className="clip-handle-loop"></div>
+                  <div className="clip-body"></div>
+                </div>
+
+                <div className="polaroid-frame">
+                  <div className="polaroid-inner-img">
+                    <img
+                      src={TREASURE_IMG}
+                      alt="Evidence"
+                    />
+                    {/* BIFURCATION GHOST - VISIBLE WHEN DRUNK */}
+                    {drunkLevel > 0 && (
+                      <img
+                        src={TREASURE_IMG}
+                        alt=""
+                        className="drunk-ghost-img"
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          opacity: 0.4 + drunkLevel * 0.05,
+                          // Use the bifurcation values set in JS
+                          transform: `translate(var(--bif-x, 0px), var(--bif-y, 0px))`,
+                          // Exclusion blend mode for "negative/trippy" separation, or Normal with opacity for strict double vision
+                          mixBlendMode: 'normal',
+                          filter: `blur(${drunkLevel * 0.2}px) hue-rotate(${drunkLevel * 10}deg)`,
+                          pointerEvents: 'none',
+                          transition: 'transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1)', // Smooth settle
+                        }}
+                      />
+                    )}
+                  </div>
+                  <div className="polaroid-caption">
+                    <span>EVIDENCIA #001</span>
+                  </div>
+                </div>
               </div>
+            </div>
+
+            {/* FOOTER: Signatures REMOVED as per user request */}
+            <div className="dossier-footer-section">
+              {/* Empty or just stamp */}
             </div>
           </div>
         </div>
@@ -452,7 +435,7 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
       {phase === 'revealed' && (
         <div className="action-footer-independent">
           <button className="btn-primary-action" onClick={toggleMusic}>
-            {musicPlaying ? '⏸ PAUSAR MÚSICA' : '🍹 IMAGINA QUE BRINDAMOS'}
+            {musicPlaying ? '⏸ PAUSAR MÚSICA' : '🍺 IMAGINA QUE BRINDAMOS'}
           </button>
           <div className="action-hint-text">🎧 Usar Auriculares</div>
           <button className="btn-secondary-action" onClick={() => window.location.reload()}>
@@ -486,12 +469,13 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
           50% { transform: scale(1.1); }
           100% { transform: scale(1); opacity: 1; }
         }
+        /* UPDATED DRUNK SWAY - NO LAYOUT JUMP */
         @keyframes drunkSway {
-          0% { transform: translate(-50%, -50%) rotate(0deg) translateX(0); }
-          25% { transform: translate(-50%, -50%) rotate(var(--sway-deg, 1deg)) translateX(var(--sway-px, 2px)); }
-          50% { transform: translate(-50%, -50%) rotate(0deg) translateX(0); }
-          75% { transform: translate(-50%, -50%) rotate(calc(var(--sway-deg, 1deg) * -1)) translateX(calc(var(--sway-px, 2px) * -1)); }
-          100% { transform: translate(-50%, -50%) rotate(0deg) translateX(0); }
+          0% { transform: rotate(0deg) scale(1); filter: blur(0px); }
+          25% { transform: rotate(1deg) scale(1.01); filter: blur(0.5px); }
+          50% { transform: rotate(-1deg) scale(1); filter: blur(0px); }
+          75% { transform: rotate(0.5deg) scale(0.99); filter: blur(0.8px); }
+          100% { transform: rotate(0deg) scale(1); filter: blur(0px); }
         }
       `}</style>
     </div>
