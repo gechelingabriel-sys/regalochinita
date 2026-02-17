@@ -486,6 +486,23 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
     }, 200);
   }, [isActive, phase, playSound, playFolderOpen, spawnConfetti, getAudioContext]);
 
+  // ANDROID FALLBACK: Force opacity on final image after delay to ensure visibility
+  useEffect(() => {
+    if (missionTerminated) {
+      // Force repaint/opacity after animation should have started
+      const timer = setTimeout(() => {
+        const img = document.querySelector('.final-evidence-img') as HTMLElement;
+        if (img) {
+          // Force styles if animation failed
+          img.style.opacity = '1';
+          img.style.transform = 'scale(1) rotate(0deg)';
+          img.style.filter = 'brightness(1) contrast(1) blur(0) sepia(0) grayscale(0)';
+        }
+      }, 3500); // 3.5s delay (develop animation is 4s, but we force visibility if stuck)
+      return () => clearTimeout(timer);
+    }
+  }, [missionTerminated]);
+
   // CHEERS LOGIC - BEER ONLY & BIFURCATION
   const [cheersCount, setCheersCount] = useState(0);
   const [drunkLevel, setDrunkLevel] = useState(0);
@@ -694,7 +711,9 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
                 className="polaroid-wrapper"
                 style={{
                   transform: 'rotate(2deg)', // Static rotation only
-                  transition: 'none' // No transitions to avoid interference
+                  transition: 'none', // No transitions to avoid interference
+                  transformStyle: 'preserve-3d',
+                  WebkitTransformStyle: 'preserve-3d'
                 }}
               >
                 <div className="polaroid-frame">
@@ -806,26 +825,28 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
       </div>
 
       {/* ACTION BUTTONS — outside the folder, only visible after reveal */}
-      {phase === 'revealed' && (
-        <div className="action-footer-independent">
-          <button className="btn-primary-action" onClick={toggleMusic}>
-            {musicPlaying ? '⏸ PAUSAR MÚSICA' : '🍹 IMAGINA QUE BRINDAMOS'}
-          </button>
-          <div className="action-hint-text">🎧 Usar Auriculares</div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button className="btn-secondary-action" onClick={() => window.location.reload()}>
-              🔄 REPETIR
+      {
+        phase === 'revealed' && (
+          <div className="action-footer-independent">
+            <button className="btn-primary-action" onClick={toggleMusic}>
+              {musicPlaying ? '⏸ PAUSAR MÚSICA' : '🍹 IMAGINA QUE BRINDAMOS'}
             </button>
-            <button
-              className="btn-primary-action"
-              style={{ background: '#8b0000', borderColor: '#ff0000', color: 'white' }}
-              onClick={handleCloseCase}
-            >
-              🔒 CERRAR CASO
-            </button>
+            <div className="action-hint-text">🎧 Usar Auriculares</div>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button className="btn-secondary-action" onClick={() => window.location.reload()}>
+                🔄 REPETIR
+              </button>
+              <button
+                className="btn-primary-action"
+                style={{ background: '#8b0000', borderColor: '#ff0000', color: 'white' }}
+                onClick={handleCloseCase}
+              >
+                🔒 CERRAR CASO
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* CASE CLOSED BLACKOUT OVERLAY */}
       <div
@@ -849,78 +870,84 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
       </div>
 
       {/* SELF DESTRUCT OVERLAY */}
-      {(selfDestructActive && !missionTerminated) && (
-        <div className="self-destruct-overlay active">
-          <div className="self-destruct-content">
+      {
+        (selfDestructActive && !missionTerminated) && (
+          <div className="self-destruct-overlay active">
+            <div className="self-destruct-content">
 
-            <div className="tnt-bundle">
-              <div className="tnt-stick"></div>
-              <div className="tnt-stick"></div>
-              <div className="tnt-stick"></div>
-              <div className="tnt-band"></div>
+              <div className="tnt-bundle">
+                <div className="tnt-stick"></div>
+                <div className="tnt-stick"></div>
+                <div className="tnt-stick"></div>
+                <div className="tnt-band"></div>
 
-              {/* CLOCK UNIT */}
-              <div className="tnt-clock">
-                <div className="clock-display">
-                  00:0{Math.ceil(countdown)}
+                {/* CLOCK UNIT */}
+                <div className="tnt-clock">
+                  <div className="clock-display">
+                    00:0{Math.ceil(countdown)}
+                  </div>
                 </div>
-              </div>
 
-              <div className="tnt-wire"></div>
+                <div className="tnt-wire"></div>
 
-              {/* FUSE */}
-              <svg className="fuse-svg" viewBox="0 0 100 50">
-                <path d="M10,40 Q30,10 50,25 T90,10" className="fuse-cord-bg" />
-                <path
-                  d="M10,40 Q30,10 50,25 T90,10"
-                  className="fuse-cord-burn"
+                {/* FUSE */}
+                <svg className="fuse-svg" viewBox="0 0 100 50">
+                  <path d="M10,40 Q30,10 50,25 T90,10" className="fuse-cord-bg" />
+                  <path
+                    d="M10,40 Q30,10 50,25 T90,10"
+                    className="fuse-cord-burn"
+                    style={{
+                      strokeDasharray: 100,
+                      strokeDashoffset: 100 * (1 - (countdown / 5)), // Burns from tip (100) backwards
+                    }}
+                  />
+                </svg>
+                {/* SPARK PARTICLE (Follows path approx) */}
+                <div
+                  className="fuse-spark"
                   style={{
-                    strokeDasharray: 100,
-                    strokeDashoffset: 100 * (1 - (countdown / 5)), // Burns from tip (100) backwards
+                    // Simplified path following logic or just relying on strokeoffset trick
+                    offsetPath: `path("M10,40 Q30,10 50,25 T90,10")`,
+                    offsetDistance: `${100 * (1 - (countdown / 5))}%`
                   }}
                 />
-              </svg>
-              {/* SPARK PARTICLE (Follows path approx) */}
-              <div
-                className="fuse-spark"
-                style={{
-                  // Simplified path following logic or just relying on strokeoffset trick
-                  offsetPath: `path("M10,40 Q30,10 50,25 T90,10")`,
-                  offsetDistance: `${100 * (1 - (countdown / 5))}%`
-                }}
-              />
-            </div>
+              </div>
 
-            <div className="countdown-warning-text">
-              EL DOCUMENTO SE AUTODESTRUIRA
+              <div className="countdown-warning-text">
+                EL DOCUMENTO SE AUTODESTRUIRA
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* EXPLOSION FLASH TO DARKROOM TRANSITION */}
-      {explosionPhase === 'flash' && (
-        <div className="explosion-whiteout" />
-      )}
+      {
+        explosionPhase === 'flash' && (
+          <div className="explosion-whiteout" />
+        )
+      }
 
       {/* FINAL COPY REVEAL */}
-      {missionTerminated && (
-        <div className="final-mission-layer">
-          <div className="final-content-box">
-            <img
-              src="https://res.cloudinary.com/dswpi1pb9/image/upload/v1771349137/IMG_6701_xvmb2s.png"
-              alt="Copy"
-              className="final-evidence-img"
-            />
-            <div className="final-message">
-              Tranqui, hicimos una copia 😉
+      {
+        missionTerminated && (
+          <div className="final-mission-layer">
+            <div className="final-content-box">
+              <img
+                src="https://res.cloudinary.com/dswpi1pb9/image/upload/v1771349137/IMG_6701_xvmb2s.png"
+                alt="Copy"
+                className="final-evidence-img"
+              />
+              <div className="final-message">
+                Tranqui, hicimos una copia 😉
+              </div>
+              <button className="btn-secondary-action" onClick={() => window.location.reload()} style={{ marginTop: '20px' }}>
+                🔄 REPETIR MISION
+              </button>
             </div>
-            <button className="btn-secondary-action" onClick={() => window.location.reload()} style={{ marginTop: '20px' }}>
-              🔄 REPETIR MISION
-            </button>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Dynamic keyframes */}
       <style>{`
@@ -1066,6 +1093,6 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
 
 
       `}</style>
-    </div>
+    </div >
   );
 };

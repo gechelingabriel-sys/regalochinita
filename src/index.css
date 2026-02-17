@@ -107,6 +107,9 @@
   /* Android fix */
   position: relative;
   perspective: 1500px;
+  /* iOS 3D Context Fix */
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -183,6 +186,7 @@
   position: relative;
   padding: 25px;
   transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
   border: 1px solid #666;
 }
 
@@ -844,6 +848,22 @@
   align-items: center;
   scale: 1.5;
   transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+}
+
+/* RESPONSIVE DYNAMITE SCALING */
+@media (max-width: 450px) {
+  .self-destruct-content {
+    scale: 1.0;
+    /* Reduce scale for mobile */
+  }
+}
+
+@media (max-width: 380px) {
+  .self-destruct-content {
+    scale: 0.75;
+    /* Further reduce for small iPhones to prevent fuse clipping */
+  }
 }
 
 /* PREMIUM 3D TNT BUNDLE - AGENCY LEVEL */
@@ -859,6 +879,7 @@
   transform: rotate(-5deg) rotateY(15deg);
   filter: drop-shadow(0 30px 60px rgba(0, 0, 0, 0.95));
   transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
 }
 
 .tnt-stick {
@@ -1174,6 +1195,11 @@
     /* The chemical process */
     floatingPhoto 6s ease-in-out infinite 1s;
   /* Floating in liquid tray sensation */
+
+  /* Android Optimization */
+  will-change: transform, opacity, filter;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 @keyframes developPhoto {
