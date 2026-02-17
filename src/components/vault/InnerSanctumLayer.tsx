@@ -1020,6 +1020,8 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
             mix-blend-mode: multiply;
             mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.5'/%3E%3C/svg%3E");
             animation: stampSlam 0.3s cubic-bezier(0.1, 0.9, 0.2, 1) 0.6s forwards;
+            /* iOS Fix for mix-blend-mode */
+            -webkit-backdrop-filter: blur(0px); 
         }
 
         @keyframes stampSlam {

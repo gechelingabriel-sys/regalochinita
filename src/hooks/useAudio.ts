@@ -32,7 +32,7 @@ export const useAudio = () => {
       gainMasterRef.current.connect(ctxRef.current.destination);
 
       if (ctxRef.current.state === 'suspended') {
-        ctxRef.current.resume().catch(() => {});
+        ctxRef.current.resume().catch(() => { });
       }
     }
 
@@ -83,7 +83,7 @@ export const useAudio = () => {
 
       // iOS can suspend the context; resume when user interacts
       if (ctxRef.current.state === 'suspended') {
-        ctxRef.current.resume().catch(() => {});
+        ctxRef.current.resume().catch(() => { });
       }
 
       const t = ctxRef.current.currentTime;
@@ -214,9 +214,17 @@ export const useAudio = () => {
     fadeRafRef.current = requestAnimationFrame(tick);
   }, []);
 
+  const pauseTimeoutRef = useRef<number | null>(null);
+
   const playMusic = useCallback(() => {
     const el = bgmElementRef.current;
     if (!el) return;
+
+    // CANCEL any pending pause
+    if (pauseTimeoutRef.current) {
+      clearTimeout(pauseTimeoutRef.current);
+      pauseTimeoutRef.current = null;
+    }
 
     // Must be triggered by a user gesture on iOS/Android
     el.play()
@@ -233,14 +241,21 @@ export const useAudio = () => {
     const el = bgmElementRef.current;
     if (!el) return;
 
+    if (pauseTimeoutRef.current) clearTimeout(pauseTimeoutRef.current);
+
     fadeVolume(0, 420);
-    window.setTimeout(() => {
-      // Only pause if we are still at/near 0 volume
+
+    // Store timeout ID to allow cancellation
+    pauseTimeoutRef.current = window.setTimeout(() => {
       try {
-        if (el.volume <= 0.02) el.pause();
+        // Force pause if volume is low enough (fade completed)
+        if (el.volume <= 0.05) {
+          el.pause();
+        }
       } catch {
         // ignore
       }
+      pauseTimeoutRef.current = null;
     }, 450);
 
     setMusicPlaying(false);
