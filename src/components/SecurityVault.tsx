@@ -8,7 +8,7 @@ import { InnerSanctumLayer } from './vault/InnerSanctumLayer';
 type Layer = 'vault' | 'voucher' | 'video' | 'sanctum';
 
 export const SecurityVault: React.FC = () => {
-  const [activeLayer, setActiveLayer] = useState<Layer>('vault');
+  const [activeLayer, setActiveLayer] = useState<Layer>('vault'); // Default to vault
   const [exitingLayer, setExitingLayer] = useState<Layer | null>(null);
   const { init, play, toggleMusic, musicPlaying } = useAudio();
 
@@ -19,10 +19,10 @@ export const SecurityVault: React.FC = () => {
       document.removeEventListener('click', handleInteraction);
       document.removeEventListener('touchstart', handleInteraction);
     };
-    
+
     document.addEventListener('click', handleInteraction);
     document.addEventListener('touchstart', handleInteraction);
-    
+
     return () => {
       document.removeEventListener('click', handleInteraction);
       document.removeEventListener('touchstart', handleInteraction);
