@@ -4536,3 +4536,42 @@
     transform: scale(1) translateZ(0);
   }
 }
+
+/* --- MOBILE VISUAL FIXES RE-APPLIED --- */
+
+/* 1. iOS 3D Context Fix - Safari requires explicit preserve-3d on all nested containers */
+.app-container,
+.folder-3d-scene,
+.polaroid-wrapper,
+.tnt-bundle {
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+}
+
+/* 2. Dynamite Responsiveness - Scale down on small screens to fit */
+@media (max-width: 450px) {
+  .self-destruct-overlay {
+      align-items: flex-start;
+      padding-top: 10vh; /* Move up on mobile */
+  }
+  .tnt-bundle {
+      transform: scale(0.9);
+      transform-origin: center top;
+  }
+}
+
+@media (max-width: 380px) {
+  .tnt-bundle {
+      transform: scale(0.7); /* Aggressive scaling for iPhone SE/Mini */
+  }
+}
+
+/* 3. Android Photo Optimization - Hardware acceleration for final reveal */
+.final-evidence-img {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  /* Ensure fill-mode forwards works even if animation glitches */
+  opacity: 0; 
+  animation-fill-mode: forwards;
+}
