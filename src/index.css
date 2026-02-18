@@ -849,7 +849,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  scale: 1.5;
+  /* ANDROID FIX: `scale` shorthand not supported on Chrome <104 (Samsung S21 ships with older Chrome) */
+  transform: scale(1.5);
   transform-style: preserve-3d;
   -webkit-transform-style: preserve-3d;
 }
@@ -857,15 +858,13 @@
 /* RESPONSIVE DYNAMITE SCALING */
 @media (max-width: 450px) {
   .self-destruct-content {
-    scale: 1.0;
-    /* Reduce scale for mobile */
+    transform: scale(1.0);
   }
 }
 
 @media (max-width: 380px) {
   .self-destruct-content {
-    scale: 0.75;
-    /* Further reduce for small iPhones to prevent fuse clipping */
+    transform: scale(0.75);
   }
 }
 
@@ -880,7 +879,8 @@
   justify-content: center;
   gap: 3px;
   transform: rotate(-5deg) rotateY(15deg);
-  filter: drop-shadow(0 30px 60px rgba(0, 0, 0, 0.95));
+  /* ANDROID FIX: filter creates stacking context breaking preserve-3d + GPU issues on mid-range Android */
+  /* filter: drop-shadow — replaced with box-shadow on children */
   transform-style: preserve-3d;
   -webkit-transform-style: preserve-3d;
 }
@@ -1051,11 +1051,20 @@
   pointer-events: none;
   z-index: 30;
   background: radial-gradient(circle, #fff 10%, #ffcc00 40%, transparent 70%);
-  mix-blend-mode: screen;
+  /* ANDROID FIX: mix-blend-mode:screen can cause compositing issues on Android Chrome */
+  /* mix-blend-mode: screen; — removed for compatibility */
   animation: aggressiveSpark 0.06s infinite;
   transform-origin: center;
+  /* ANDROID FIX: offset-path (CSS Motion Path) not supported on Android Chrome <115.
+     Fallback: position spark at fuse tip statically. JS-driven position is a bonus. */
   top: -60px;
   right: -60px;
+
+  /* offset-path and offset-distance applied only where supported */
+  @supports (offset-path: path('M0,0')) {
+    top: auto;
+    right: auto;
+  }
 }
 
 @keyframes aggressiveSpark {
@@ -1188,19 +1197,19 @@
 
   /* Initial State: Undeveloped */
   opacity: 0;
-  transform: scale(0.95);
   filter: brightness(2) contrast(0.5) blur(5px) sepia(1);
-  /* Overexposed/undeveloped look */
 
-  /* Developing Animation */
+  /* ANDROID FIX: Split into two separate animations targeting different properties.
+     developPhoto ONLY animates opacity+filter (no transform).
+     floatingPhoto ONLY animates transform.
+     This prevents Android Chrome from overriding the final transform state. */
   animation:
     developPhoto 4s cubic-bezier(0.2, 0.6, 0.2, 1) forwards 1s,
-    /* The chemical process */
-    floatingPhoto 6s ease-in-out infinite 1s;
-  /* Floating in liquid tray sensation */
+    floatingPhoto 6s ease-in-out infinite 5s;
+  /* floatingPhoto starts AFTER developPhoto completes (1s delay + 4s duration = 5s) */
 
-  /* Android Optimization */
-  will-change: transform, opacity, filter;
+  /* Android Optimization: only hint transform to avoid GPU memory pressure */
+  will-change: transform, opacity;
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }
@@ -1209,7 +1218,7 @@
   0% {
     opacity: 0;
     filter: brightness(0.1) contrast(3) blur(10px) sepia(1) grayscale(1);
-    transform: scale(0.9) rotate(-2deg);
+    /* ANDROID FIX: transform removed from here — floatingPhoto handles transform separately */
   }
 
   30% {
@@ -1225,8 +1234,6 @@
   100% {
     opacity: 1;
     filter: brightness(1) contrast(1) blur(0) sepia(0) grayscale(0);
-    /* Fully developed */
-    transform: scale(1) rotate(0deg);
   }
 }
 
@@ -3003,25 +3010,23 @@
   /* A4 Ratio */
   perspective: 2500px;
   z-index: 10;
-
-  /* MOBILE OPTIMIZATION - IMPACT VISUAL */
-  @media (max-width: 768px) {
-    width: 80vw;
-    height: calc(80vw * 1.414);
-    max-height: 60vh;
-    max-width: calc(60vh / 1.414);
-  }
-
   transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
   margin: auto;
   flex: 0 0 auto;
   transform-style: preserve-3d;
   -webkit-transform-style: preserve-3d;
-  will-change: transform,
-  filter;
+  /* NOTE: will-change:filter removed — it creates a stacking context that flattens 3D on iOS */
+  will-change: transform;
+}
 
-  /* Consolidating styles from likely duplicate blocks below */
-  /* Removing duplicate definition found at line 3471 and 4544 */
+/* MOBILE OPTIMIZATION — must be outside the rule block for iOS Safari compatibility */
+@media (max-width: 768px) {
+  .folder-3d-scene {
+    width: 80vw;
+    height: calc(80vw * 1.414);
+    max-height: 60vh;
+    max-width: calc(60vh / 1.414);
+  }
 }
 
 /* ============================================
@@ -3065,10 +3070,10 @@
   justify-content: center;
   align-items: center;
   position: relative;
-  touch-action: none;
-  /* LOCK SCROLL COMPLETELY */
+  /* ANDROID FIX: touch-action:none blocks ALL touch events including taps on Android.
+     Use manipulation instead — prevents double-tap zoom but allows taps and swipes. */
+  touch-action: manipulation;
   perspective: 1000px;
-  /* overflow: visible; */
   transform-style: preserve-3d;
   -webkit-transform-style: preserve-3d;
 }
@@ -3319,10 +3324,11 @@
   font-weight: 900;
   font-size: 16px;
   letter-spacing: 2px;
-  mix-blend-mode: multiply;
+  /* CRITICAL iOS FIX: mix-blend-mode + filter both flatten preserve-3d on iOS Safari */
+  /* mix-blend-mode: multiply; — removed */
   opacity: 0.9;
-  box-shadow: inset 0 0 5px rgba(200, 0, 0, 0.2);
-  filter: drop-shadow(1px 1px 0px rgba(200, 0, 0, 0.2));
+  box-shadow: inset 0 0 5px rgba(200, 0, 0, 0.2), 1px 1px 0px rgba(200, 0, 0, 0.2);
+  /* filter: drop-shadow — replaced with box-shadow to avoid stacking context */
 }
 
 .ref-code {
@@ -3728,9 +3734,11 @@
   padding: 8px 16px;
   transform: rotate(0.5deg);
   background: transparent;
-  mix-blend-mode: multiply;
-  /* Realistic ink blend */
+  /* CRITICAL iOS FIX: mix-blend-mode creates a stacking context that flattens preserve-3d on iOS */
+  /* mix-blend-mode: multiply; — removed for iOS compatibility */
   white-space: nowrap;
+  /* Add -webkit- prefix for iOS mask support */
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.8'/%3E%3C/svg%3E");
   mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.8'/%3E%3C/svg%3E");
 }
 
@@ -3798,12 +3806,15 @@
   justify-content: center;
   flex-direction: column;
   transform: rotateY(0deg);
-  overflow: hidden;
+  /* CRITICAL iOS FIX: overflow:hidden flattens preserve-3d on iOS Safari — removed */
+  overflow: visible;
   /* Manila Front Texture */
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.06'/%3E%3C/svg%3E"),
     linear-gradient(135deg, #efe2c9 0%, #d4c29b 100%);
   border-left: 2px solid rgba(0, 0, 0, 0.1);
   /* Spine definition */
+  /* Clip content without breaking 3D: use clip-path instead of overflow */
+  clip-path: inset(0 round 4px 8px 8px 4px);
 }
 
 /* Spine Crease Visual */
@@ -4192,6 +4203,10 @@
   border: none;
   font-size: 13px;
   transition: transform 0.2s;
+  /* ANDROID FIX: proper touch response */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  cursor: pointer;
 }
 
 .btn-primary-action:active {
@@ -4208,6 +4223,10 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   text-transform: uppercase;
   letter-spacing: 1px;
+  /* ANDROID FIX: proper touch response */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  cursor: pointer;
 }
 
 /* DESKTOP DEVICE SIMULATION - MACOS PREVIEW STYLE */
