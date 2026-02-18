@@ -3295,16 +3295,15 @@
   transform: translateX(-50%) rotate(-1deg);
   width: 90px;
   height: 32px;
-  background: rgba(255, 255, 240, 0.45);
-  backdrop-filter: blur(1px);
+  background: rgba(255, 255, 240, 0.6);
+  /* CRITICAL iOS FIX: backdrop-filter removed — creates stacking context that flattens preserve-3d */
   box-shadow:
     0 1px 3px rgba(0, 0, 0, 0.1),
     inset 0 0 10px rgba(255, 255, 255, 0.5);
   z-index: 20;
   pointer-events: none;
   /* Ragged edges simulation */
-  mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%);
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%);
+  /* CRITICAL iOS FIX: mask-image removed — creates stacking context that flattens preserve-3d on iOS Safari */
 }
 
 .polaroid-tape::after {
@@ -3359,19 +3358,24 @@
   border-radius: 10px;
 }
 
-/* HIGH IMPACT DRUNK EFFECT */
-.drunk-active .dossier-paper {
-  /* Chromatic Aberration Simulation via RGB split text shadow/filter not performant enough on whole div.
-      We use separate filters on the container or pseudo elements. */
-}
+/* HIGH IMPACT DRUNK EFFECT - empty, handled by pseudo-element below */
 
 /* Apply chromatic aberration to the whole scene when super drunk */
-.drunk-active.folder-3d-scene {
-  /* Using text-shadow to shift RGB channels on everything text-like? No.
-      We'll use drop-shadow separation */
-  filter:
-    drop-shadow(var(--aberration-x, 0px) 0 0 rgba(255, 0, 0, 0.5)) drop-shadow(calc(var(--aberration-x, 0px) * -1) 0 0 rgba(0, 255, 255, 0.5)) blur(var(--drunk-blur, 0px));
-  transition: filter 0.2s ease-out;
+/* CRITICAL iOS FIX: filter on a preserve-3d container flattens all 3D children on iOS Safari.
+   We use a pseudo-element overlay instead to achieve the visual effect without breaking 3D. */
+
+.drunk-active.folder-3d-scene::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 200;
+  /* Chromatic aberration via box-shadow on overlay — doesn't break 3D */
+  box-shadow: inset 0 0 0 0 transparent;
+  mix-blend-mode: normal;
+  opacity: var(--drunk-blur, 0);
+  background: rgba(255, 0, 0, 0.03);
+  transition: opacity 0.2s ease-out;
 }
 
 /* PHANTOM GLASS POP - OPTICAL ILLUSION */
@@ -3737,9 +3741,8 @@
   /* CRITICAL iOS FIX: mix-blend-mode creates a stacking context that flattens preserve-3d on iOS */
   /* mix-blend-mode: multiply; — removed for iOS compatibility */
   white-space: nowrap;
-  /* Add -webkit- prefix for iOS mask support */
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.8'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.8'/%3E%3C/svg%3E");
+  /* CRITICAL iOS FIX: mask-image creates a stacking context that flattens preserve-3d on iOS Safari.
+     Removed — the stamp looks fine without it. */
 }
 
 /* Removed complicated noise masks for cleaner look */
@@ -3761,7 +3764,7 @@
   font-size: 10px;
   font-weight: bold;
   opacity: 0.8;
-  mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.5'/%3E%3C/svg%3E");
+  /* CRITICAL iOS FIX: mask-image removed — creates stacking context that flattens preserve-3d */
   transform: rotate(var(--r, 0deg));
 }
 
@@ -3794,6 +3797,10 @@
 /* --- BACK COVER --- */
 .folder-back {
   z-index: 1;
+  /* ANDROID FIX: Force GPU layer promotion */
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  touch-action: manipulation;
 }
 
 /* --- FRONT COVER (Animates like a Book) --- */
@@ -3806,15 +3813,22 @@
   justify-content: center;
   flex-direction: column;
   transform: rotateY(0deg);
-  /* CRITICAL iOS FIX: overflow:hidden flattens preserve-3d on iOS Safari — removed */
+  /* CRITICAL iOS + Android FIX: overflow:hidden on a 3D-rotating element causes compositor
+     layer issues on both Safari and Chrome for Android. Use visible + border-radius only. */
   overflow: visible;
   /* Manila Front Texture */
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.06'/%3E%3C/svg%3E"),
     linear-gradient(135deg, #efe2c9 0%, #d4c29b 100%);
   border-left: 2px solid rgba(0, 0, 0, 0.1);
   /* Spine definition */
-  /* Clip content without breaking 3D: use clip-path instead of overflow */
-  clip-path: inset(0 round 4px 8px 8px 4px);
+  /* CRITICAL iOS FIX: clip-path creates a stacking context that flattens preserve-3d on iOS Safari.
+     Use border-radius instead — it does NOT break 3D contexts. */
+  border-radius: 4px 8px 8px 4px;
+  /* ANDROID FIX: Force GPU layer promotion for smooth 3D rotation */
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  /* ANDROID FIX: Prevent double-tap zoom on the folder cover */
+  touch-action: manipulation;
 }
 
 /* Spine Crease Visual */
@@ -3959,7 +3973,7 @@
   width: 30px;
   height: 30px;
   background: rgba(220, 200, 160, 0.6);
-  backdrop-filter: blur(2px);
+  /* CRITICAL iOS FIX: backdrop-filter removed — creates stacking context that flattens preserve-3d */
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
@@ -3996,7 +4010,7 @@
   transform: rotate(-5deg);
   background: rgba(255, 255, 255, 0.6);
   letter-spacing: 2px;
-  backdrop-filter: blur(2px);
+  /* CRITICAL iOS FIX: backdrop-filter removed — creates stacking context that flattens preserve-3d */
 }
 
 .ref-code {
@@ -4614,4 +4628,58 @@
   /* Ensure fill-mode forwards works even if animation glitches */
   opacity: 0;
   animation-fill-mode: forwards;
+}
+
+/* ============================================
+   ANDROID CHROME SPECIFIC FIXES
+   ============================================ */
+
+/* Android Chrome: Force GPU compositing on the 3D scene and its covers.
+   Without this, Android may render the 3D rotation on the CPU causing jank or blank frames. */
+.folder-3d-scene,
+.folder-back,
+.folder-front {
+  /* translateZ(0) promotes to GPU compositor layer on Android Chrome */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+/* Android Chrome: The folder-front overrides the above with its actual transform.
+   The translateZ(0) hint is only needed as a base — the animation will override it. */
+.folder-front {
+  -webkit-transform: rotateY(0deg) translateZ(0);
+  transform: rotateY(0deg) translateZ(0);
+}
+
+/* Android Chrome: Ensure the open animation also includes translateZ for GPU promotion */
+.folder-3d-scene.open .folder-front {
+  animation: bookOpen 1.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+/* Android Chrome: position:fixed inside a 3D-transformed ancestor breaks on Android.
+   The self-destruct and blackout overlays use position:fixed and are inside #inner-sanctum.
+   Since #inner-sanctum is a .layer (which has transform), fixed children won't work correctly.
+   These overlays are already rendered correctly because they are direct children of #inner-sanctum
+   which is position:absolute, not inside the .folder-3d-scene. No fix needed here.
+   However, we add isolation to prevent any accidental stacking context issues. */
+.self-destruct-overlay,
+.blackout-overlay,
+.explosion-whiteout,
+.final-mission-layer {
+  /* Ensure these overlays are always on top and not affected by 3D transforms */
+  isolation: isolate;
+}
+
+/* Android Chrome: Smooth scrolling / rendering for the folder scene on low-end devices */
+@media (max-width: 768px) {
+  .folder-3d-scene {
+    /* Reduce perspective on mobile for better performance */
+    perspective: 1200px;
+  }
+
+  .folder-back,
+  .folder-front {
+    /* Ensure GPU layer on all mobile browsers */
+    will-change: transform;
+  }
 }
