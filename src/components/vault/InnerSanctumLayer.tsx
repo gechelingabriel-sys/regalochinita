@@ -729,11 +729,14 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
                       className="treasure-video"
                       onContextMenu={(e) => e.preventDefault()}
                       draggable={false}
+                      poster="https://res.cloudinary.com/dswpi1pb9/image/upload/v1771349137/IMG_6701_xvmb2s.png"
                       style={{
                         pointerEvents: 'none', // Allow clicks to pass through to hitbox, but prevent direct video interaction
                         userSelect: 'none',
                         WebkitUserSelect: 'none',
-                        WebkitTouchCallout: 'none'
+                        WebkitTouchCallout: 'none',
+                        transform: 'translateZ(0)', /* Force Hardware Acceleration */
+                        WebkitTransform: 'translateZ(0)'
                       } as any}
                     />
                     {/* CINEMATIC GHOST - Escapes clipping */}
@@ -745,11 +748,14 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
                       className="ghost-escape-video"
                       onContextMenu={(e) => e.preventDefault()}
                       draggable={false}
+                      poster="https://res.cloudinary.com/dswpi1pb9/image/upload/v1771349137/IMG_6701_xvmb2s.png"
                       style={{
                         pointerEvents: 'none',
                         userSelect: 'none',
                         WebkitUserSelect: 'none',
-                        WebkitTouchCallout: 'none'
+                        WebkitTouchCallout: 'none',
+                        transform: 'translateZ(0)',
+                        WebkitTransform: 'translateZ(0)'
                       } as any}
                     />
 
@@ -777,6 +783,7 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
                         muted
                         playsInline
                         className="drunk-ghost-img chromatic-aberration"
+                        poster="https://res.cloudinary.com/dswpi1pb9/image/upload/v1771349137/IMG_6701_xvmb2s.png"
                         style={{
                           position: 'absolute',
                           inset: 0,
@@ -785,7 +792,8 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
                           objectFit: 'cover',
                           opacity: 0.4 + drunkLevel * 0.1,
                           // Use the bifurcation values set in JS
-                          transform: `translate(var(--bif-x, 0px), var(--bif-y, 0px))`,
+                          transform: `translate(var(--bif-x, 0px), var(--bif-y, 0px)) translateZ(0)`,
+                          WebkitTransform: `translate(var(--bif-x, 0px), var(--bif-y, 0px)) translateZ(0)`,
                           mixBlendMode: 'normal',
                           filter: `blur(${drunkLevel * 0.5}px) hue-rotate(${drunkLevel * 5}deg)`,
                           pointerEvents: 'none',
