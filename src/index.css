@@ -3846,6 +3846,15 @@
 .folder-3d-scene.open .folder-front {
   /* OPEN BOOK ANIMATION */
   animation: bookOpen 1.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  /* Ensure it stays "below" the back visually when open? 
+     Actually, when open -180deg, it ends up on the left.
+     But we want to make sure the BACK (document) is interactable and visible. */
+  z-index: 50;
+}
+
+.folder-3d-scene.open .folder-back {
+  /* Ensure content is prioritized when open */
+  z-index: 60;
 }
 
 @keyframes bookOpen {

@@ -477,7 +477,7 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
               // The CSS animation takes ~1.8s. We reveal the contents once fully open.
               setTimeout(() => {
                 setPhase('revealed');
-              }, 1200); // Synced with longer animation
+              }, 1800); // Synced with longer animation
 
             }, 1600); // Long pause to see CONFIDENTIAL
           }, 1800); // Slow transition from door → folder
@@ -685,8 +685,8 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
         </div>
       )}
 
-      {/* AMBIENT BACKGROUND */}
-      <div className={`ambient-background ${phase === 'revealed' ? 'visible' : ''}`} />
+      {/* AMBIENT BACKGROUND - REMOVED TO PREVENT GHOSTING */}
+      {/* <div className={`ambient-background ${phase === 'revealed' ? 'visible' : ''}`} /> */}
 
       {/* 3D FOLDER SCENE — only dossier + photo inside */}
       <div className={`folder-3d-scene ${(phase === 'revealed' || phase === 'folder-opening') ? 'open' : ''}`}>
