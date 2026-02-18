@@ -1492,13 +1492,19 @@
   justify-content: flex-start;
   transform-origin: top left;
   z-index: 60;
-  clip-path: polygon(20% 0%, 80% 0%, 100% 15%, 100% 100%, 0% 100%, 0% 15%);
+  /* CRITICAL iOS FIX: clip-path creates a stacking context that hides the tag on iOS Safari.
+     Replaced with border-radius to achieve the notched-top look without breaking z-index. */
+  border-radius: 4px 4px 6px 6px;
+  border-top: 14px solid #e8e4d3;
+  /* Simulates the notch cutout at the top */
   border-bottom: 4px solid #d4af37;
   cursor: pointer;
   transform: rotate(-8deg) translateY(-14px);
   opacity: 0;
   pointer-events: none;
   transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Ensure tag is always above video layer transitions */
+  isolation: isolate;
 }
 
 .tag-hanging.dropped {
@@ -3274,6 +3280,22 @@
   object-fit: cover;
 }
 
+/* CRITICAL iOS FIX: video elements inside preserve-3d containers need explicit sizing.
+   Without this, iOS Safari may render the video at 0x0 or not at all. */
+.treasure-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  /* Force hardware acceleration without breaking 3D context */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  /* Prevent iOS from showing native video controls overlay */
+  -webkit-media-controls: none;
+}
+
 .polaroid-caption {
   position: absolute;
   bottom: 15px;
@@ -4604,7 +4626,6 @@
   .self-destruct-overlay {
     align-items: flex-start;
     padding-top: 10vh;
-    /* Move up on mobile */
   }
 
   .tnt-bundle {
@@ -4616,7 +4637,6 @@
 @media (max-width: 380px) {
   .tnt-bundle {
     transform: scale(0.7);
-    /* Aggressive scaling for iPhone SE/Mini */
   }
 }
 
@@ -4625,61 +4645,57 @@
   will-change: transform, opacity;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  /* Ensure fill-mode forwards works even if animation glitches */
   opacity: 0;
   animation-fill-mode: forwards;
 }
 
 /* ============================================
-   ANDROID CHROME SPECIFIC FIXES
+   CROSS-PLATFORM 3D RENDERING FIXES
    ============================================ */
 
-/* Android Chrome: Force GPU compositing on the 3D scene and its covers.
-   Without this, Android may render the 3D rotation on the CPU causing jank or blank frames. */
-.folder-3d-scene,
+/* CRITICAL iOS FIX: Do NOT apply translateZ(0) to .folder-3d-scene itself.
+   On iOS Safari, applying any transform to the element that owns `perspective`
+   collapses the 3D context and makes all children render flat (folder appears empty).
+   GPU promotion via translateZ(0) must only be applied to LEAF elements (covers),
+   never to the perspective container. */
+
+/* GPU promotion only on the covers (leaves), NOT the scene container */
 .folder-back,
 .folder-front {
-  /* translateZ(0) promotes to GPU compositor layer on Android Chrome */
   -webkit-transform: translateZ(0);
   transform: translateZ(0);
 }
 
-/* Android Chrome: The folder-front overrides the above with its actual transform.
-   The translateZ(0) hint is only needed as a base — the animation will override it. */
+/* folder-front base state: rotateY(0) + GPU hint */
 .folder-front {
   -webkit-transform: rotateY(0deg) translateZ(0);
   transform: rotateY(0deg) translateZ(0);
 }
 
-/* Android Chrome: Ensure the open animation also includes translateZ for GPU promotion */
+/* Ensure the open animation plays correctly on all platforms */
 .folder-3d-scene.open .folder-front {
   animation: bookOpen 1.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
 
-/* Android Chrome: position:fixed inside a 3D-transformed ancestor breaks on Android.
-   The self-destruct and blackout overlays use position:fixed and are inside #inner-sanctum.
-   Since #inner-sanctum is a .layer (which has transform), fixed children won't work correctly.
-   These overlays are already rendered correctly because they are direct children of #inner-sanctum
-   which is position:absolute, not inside the .folder-3d-scene. No fix needed here.
-   However, we add isolation to prevent any accidental stacking context issues. */
+/* Overlays: isolate from 3D stacking contexts */
 .self-destruct-overlay,
 .blackout-overlay,
 .explosion-whiteout,
 .final-mission-layer {
-  /* Ensure these overlays are always on top and not affected by 3D transforms */
   isolation: isolate;
 }
 
-/* Android Chrome: Smooth scrolling / rendering for the folder scene on low-end devices */
+/* Mobile: reduce perspective for performance, use backface-visibility instead of will-change
+   on covers to avoid creating new compositing layers that break preserve-3d on iOS */
 @media (max-width: 768px) {
   .folder-3d-scene {
-    /* Reduce perspective on mobile for better performance */
     perspective: 1200px;
   }
 
   .folder-back,
   .folder-front {
-    /* Ensure GPU layer on all mobile browsers */
-    will-change: transform;
+    /* backface-visibility is safer than will-change on iOS for preserve-3d children */
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
   }
 }
