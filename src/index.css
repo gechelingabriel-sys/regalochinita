@@ -150,6 +150,9 @@
   opacity: 0;
   z-index: 2;
   transform: scale(0.95);
+  /* CRITICAL IO FIX: Prevent flattening of 3D context when transformed */
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
 }
 
 .layer.active {
