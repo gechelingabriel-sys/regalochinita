@@ -688,149 +688,152 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
       {/* AMBIENT BACKGROUND - REMOVED TO PREVENT GHOSTING */}
       {/* <div className={`ambient-background ${phase === 'revealed' ? 'visible' : ''}`} /> */}
 
-      {/* 3D FOLDER SCENE — only dossier + photo inside */}
-      <div className={`folder-3d-scene ${(phase === 'revealed' || phase === 'folder-opening') ? 'open' : ''}`}>
+      {/* 3D FOLDER SCENE — perspective wrapper separates from preserve-3d context (iOS fix) */}
+      <div className="folder-perspective-wrapper">
+        <div className={`folder-3d-scene ${(phase === 'revealed' || phase === 'folder-opening') ? 'open' : ''}`}>
 
-        {/* FOLDER BACK COVER (Base) */}
-        <div className="folder-back">
-          {/* DOSSIER — only the sheet with the evidence photo */}
-          <div className="dossier-paper">
-            <div className="paper-texture"></div>
+          {/* FOLDER BACK COVER (Base) */}
+          <div className="folder-back">
+            {/* DOSSIER — only the sheet with the evidence photo */}
+            <div className="dossier-paper">
+              <div className="paper-texture"></div>
 
-            {/* HEADER: Stamps & Ref Code - OUTSIDE PHOTO */}
-            <div className="dossier-header-section">
-              <div className="stamp-box">TOP SECRET</div>
-              <div className="ref-code">REF: 23-G</div>
-            </div>
+              {/* HEADER: Stamps & Ref Code - OUTSIDE PHOTO */}
+              <div className="dossier-header-section">
+                <div className="stamp-box">TOP SECRET</div>
+                <div className="ref-code">REF: 23-G</div>
+              </div>
 
-            {/* BODY: The Polaroid Photo */}
-            <div
-              className="dossier-body-section"
-            >
+              {/* BODY: The Polaroid Photo */}
               <div
-                className="polaroid-wrapper"
-                style={{
-                  transform: 'rotate(2deg)', // Static rotation only
-                  transition: 'none', // No transitions to avoid interference
-                  transformStyle: 'preserve-3d',
-                  WebkitTransformStyle: 'preserve-3d'
-                }}
+                className="dossier-body-section"
               >
-                <div className="polaroid-frame">
-                  {/* PREMIUM TAPE CLIP */}
-                  <div className="polaroid-tape" />
+                <div
+                  className="polaroid-wrapper"
+                  style={{
+                    transform: 'rotate(2deg)', // Static rotation only
+                    transition: 'none', // No transitions to avoid interference
+                    transformStyle: 'preserve-3d',
+                    WebkitTransformStyle: 'preserve-3d'
+                  }}
+                >
+                  <div className="polaroid-frame">
+                    {/* PREMIUM TAPE CLIP */}
+                    <div className="polaroid-tape" />
 
-                  <div className="polaroid-inner-img">
-                    <video
-                      ref={videoRef}
-                      src={APEROL_VIDEO}
-                      muted
-                      playsInline
-                      className="treasure-video"
-                      onContextMenu={(e) => e.preventDefault()}
-                      draggable={false}
-                      poster="https://res.cloudinary.com/dswpi1pb9/image/upload/v1771349137/IMG_6701_xvmb2s.png"
-                      style={{
-                        pointerEvents: 'none', // Allow clicks to pass through to hitbox, but prevent direct video interaction
-                        userSelect: 'none',
-                        WebkitUserSelect: 'none',
-                        WebkitTouchCallout: 'none',
-                        transform: 'translateZ(0)', /* Force Hardware Acceleration */
-                        WebkitTransform: 'translateZ(0)'
-                      } as any}
-                    />
-                    {/* CINEMATIC GHOST - Escapes clipping */}
-                    <video
-                      ref={ghostVideoRef}
-                      src={APEROL_VIDEO}
-                      muted
-                      playsInline
-                      className="ghost-escape-video"
-                      onContextMenu={(e) => e.preventDefault()}
-                      draggable={false}
-                      poster="https://res.cloudinary.com/dswpi1pb9/image/upload/v1771349137/IMG_6701_xvmb2s.png"
-                      style={{
-                        pointerEvents: 'none',
-                        userSelect: 'none',
-                        WebkitUserSelect: 'none',
-                        WebkitTouchCallout: 'none',
-                        transform: 'translateZ(0)',
-                        WebkitTransform: 'translateZ(0)'
-                      } as any}
-                    />
-
-                    {/* GLASS HITBOX - STRICT LOCK */}
-                    <div
-                      className="glass-hitbox"
-                      onClick={handleCheers}
-                      onTouchStart={handleCheers}
-                      onContextMenu={(e) => e.preventDefault()}
-                      style={{
-                        pointerEvents: isAnimating ? 'none' : 'auto', // STRICT LOCK
-                        cursor: isAnimating ? 'wait' : 'pointer',
-                        touchAction: 'none', // PREVENT ZOOM
-                        userSelect: 'none',
-                        WebkitUserSelect: 'none',
-                        WebkitTouchCallout: 'none' // Prevent iOS long-press menu
-                      } as any}
-                    />
-
-
-                    {/* BIFURCATION GHOST - VISIBLE WHEN DRUNK */}
-                    {drunkLevel > 0 && (
+                    <div className="polaroid-inner-img">
                       <video
+                        ref={videoRef}
                         src={APEROL_VIDEO}
                         muted
                         playsInline
-                        className="drunk-ghost-img chromatic-aberration"
+                        className="treasure-video"
+                        onContextMenu={(e) => e.preventDefault()}
+                        draggable={false}
                         poster="https://res.cloudinary.com/dswpi1pb9/image/upload/v1771349137/IMG_6701_xvmb2s.png"
                         style={{
-                          position: 'absolute',
-                          inset: 0,
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                          opacity: 0.4 + drunkLevel * 0.1,
-                          // Use the bifurcation values set in JS
-                          transform: `translate(var(--bif-x, 0px), var(--bif-y, 0px)) translateZ(0)`,
-                          WebkitTransform: `translate(var(--bif-x, 0px), var(--bif-y, 0px)) translateZ(0)`,
-                          mixBlendMode: 'normal',
-                          filter: `blur(${drunkLevel * 0.5}px) hue-rotate(${drunkLevel * 5}deg)`,
-                          pointerEvents: 'none',
-                          transition: 'transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1)',
-                          '--ab-x': `${drunkLevel * 2}px`
+                          pointerEvents: 'none', // Allow clicks to pass through to hitbox, but prevent direct video interaction
+                          userSelect: 'none',
+                          WebkitUserSelect: 'none',
+                          WebkitTouchCallout: 'none',
+                          transform: 'translateZ(0)', /* Force Hardware Acceleration */
+                          WebkitTransform: 'translateZ(0)'
                         } as any}
                       />
-                    )}
-                  </div>
-                  <div className="polaroid-caption">
-                    <span>EVIDENCIA #001</span>
+                      {/* CINEMATIC GHOST - Escapes clipping */}
+                      <video
+                        ref={ghostVideoRef}
+                        src={APEROL_VIDEO}
+                        muted
+                        playsInline
+                        className="ghost-escape-video"
+                        onContextMenu={(e) => e.preventDefault()}
+                        draggable={false}
+                        poster="https://res.cloudinary.com/dswpi1pb9/image/upload/v1771349137/IMG_6701_xvmb2s.png"
+                        style={{
+                          pointerEvents: 'none',
+                          userSelect: 'none',
+                          WebkitUserSelect: 'none',
+                          WebkitTouchCallout: 'none',
+                          transform: 'translateZ(0)',
+                          WebkitTransform: 'translateZ(0)'
+                        } as any}
+                      />
+
+                      {/* GLASS HITBOX - STRICT LOCK */}
+                      <div
+                        className="glass-hitbox"
+                        onClick={handleCheers}
+                        onTouchStart={handleCheers}
+                        onContextMenu={(e) => e.preventDefault()}
+                        style={{
+                          pointerEvents: isAnimating ? 'none' : 'auto', // STRICT LOCK
+                          cursor: isAnimating ? 'wait' : 'pointer',
+                          touchAction: 'none', // PREVENT ZOOM
+                          userSelect: 'none',
+                          WebkitUserSelect: 'none',
+                          WebkitTouchCallout: 'none' // Prevent iOS long-press menu
+                        } as any}
+                      />
+
+
+                      {/* BIFURCATION GHOST - VISIBLE WHEN DRUNK */}
+                      {drunkLevel > 0 && (
+                        <video
+                          src={APEROL_VIDEO}
+                          muted
+                          playsInline
+                          className="drunk-ghost-img chromatic-aberration"
+                          poster="https://res.cloudinary.com/dswpi1pb9/image/upload/v1771349137/IMG_6701_xvmb2s.png"
+                          style={{
+                            position: 'absolute',
+                            inset: 0,
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            opacity: 0.4 + drunkLevel * 0.1,
+                            // Use the bifurcation values set in JS
+                            transform: `translate(var(--bif-x, 0px), var(--bif-y, 0px)) translateZ(0)`,
+                            WebkitTransform: `translate(var(--bif-x, 0px), var(--bif-y, 0px)) translateZ(0)`,
+                            mixBlendMode: 'normal',
+                            filter: `blur(${drunkLevel * 0.5}px) hue-rotate(${drunkLevel * 5}deg)`,
+                            pointerEvents: 'none',
+                            transition: 'transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1)',
+                            '--ab-x': `${drunkLevel * 2}px`
+                          } as any}
+                        />
+                      )}
+                    </div>
+                    <div className="polaroid-caption">
+                      <span>EVIDENCIA #001</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* FOOTER: Signatures REMOVED as per user request */}
-            <div className="dossier-footer-section">
-              {drunkPhrase && (
-                <div className="drunk-phrase-display">
-                  {drunkPhrase}
-                </div>
-              )}
+              {/* FOOTER: Signatures REMOVED as per user request */}
+              <div className="dossier-footer-section">
+                {drunkPhrase && (
+                  <div className="drunk-phrase-display">
+                    {drunkPhrase}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* FOLDER FRONT COVER (Animates open — book-style flip) */}
-        <div className="folder-front">
-          <div className="folder-label-sticker">
-            <span className="typwriter-text">CONFIDENTIAL</span>
-            <div className="stamps-row" />
+          {/* FOLDER FRONT COVER (Animates open — book-style flip) */}
+          <div className="folder-front">
+            <div className="folder-label-sticker">
+              <span className="typwriter-text">CONFIDENTIAL</span>
+              <div className="stamps-row" />
+            </div>
+            <div className="metallic-fastener"></div>
           </div>
-          <div className="metallic-fastener"></div>
+
         </div>
 
-      </div>
+      </div>{/* end folder-perspective-wrapper */}
 
       {/* ACTION BUTTONS — outside the folder, only visible after reveal */}
       {

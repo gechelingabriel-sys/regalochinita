@@ -3014,7 +3014,8 @@
   width: min(85vw, 45vh);
   height: calc(min(85vw, 45vh) * 1.414);
   /* A4 Ratio */
-  perspective: 2500px;
+  /* NOTE: perspective is on the PARENT (.folder-perspective-wrapper) not here.
+     On iOS Safari, combining perspective + preserve-3d on the same element flattens 3D. */
   z-index: 10;
   transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
   margin: auto;
@@ -3025,8 +3026,28 @@
   will-change: transform;
 }
 
+/* ============================================
+   PERSPECTIVE WRAPPER — iOS Safari Fix
+   The perspective must live on the PARENT of the preserve-3d element.
+   Combining perspective + preserve-3d on the same element flattens 3D in iOS.
+   ============================================ */
+.folder-perspective-wrapper {
+  perspective: 2500px;
+  -webkit-perspective: 2500px;
+  /* Does NOT have preserve-3d — it is just the perspective host */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
 /* MOBILE OPTIMIZATION — must be outside the rule block for iOS Safari compatibility */
 @media (max-width: 768px) {
+  .folder-perspective-wrapper {
+    perspective: 1200px;
+    -webkit-perspective: 1200px;
+  }
+
   .folder-3d-scene {
     width: 80vw;
     height: calc(80vw * 1.414);
@@ -3079,7 +3100,9 @@
   /* ANDROID FIX: touch-action:none blocks ALL touch events including taps on Android.
      Use manipulation instead — prevents double-tap zoom but allows taps and swipes. */
   touch-action: manipulation;
-  perspective: 1000px;
+  /* ANDROID + iOS FIX: perspective must NOT coexist with transform-style: preserve-3d
+     on the same element. We rely on the .folder-perspective-wrapper for perspective. 
+     This element only needs to pass through 3D context to children. */
   transform-style: preserve-3d;
   -webkit-transform-style: preserve-3d;
 }
@@ -3097,7 +3120,8 @@
 /* 2. Polaroid Frame */
 .polaroid-wrapper {
   position: relative;
-  will-change: transform;
+  /* ANDROID FIX: will-change on non-animated elements wastes compositor memory on low-end
+     Android devices (Android 7/8 with 2GB RAM). Only add it dynamically via JS when animating. */
   transform-origin: top center;
   transform-style: preserve-3d;
   -webkit-transform-style: preserve-3d;
@@ -3201,8 +3225,9 @@
   inset: 0;
   z-index: 150;
   pointer-events: none;
-  backdrop-filter: blur(0px) contrast(1);
-  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.2) 0%, transparent 70%);
+  /* ANDROID FIX: backdrop-filter is unsupported on Android Chrome < 76 and crashes
+     performance on all old Androids. Replaced with a simple white flash overlay. */
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.25) 0%, transparent 70%);
   opacity: 0;
 }
 
@@ -3213,17 +3238,17 @@
 @keyframes impactFlash {
   0% {
     opacity: 0;
-    backdrop-filter: blur(0px) contrast(1);
+    transform: scale(0.95);
   }
 
   20% {
     opacity: 1;
-    backdrop-filter: blur(12px) contrast(1.5) saturate(1.2);
+    transform: scale(1.02);
   }
 
   100% {
     opacity: 0;
-    backdrop-filter: blur(0px) contrast(1);
+    transform: scale(1);
   }
 }
 
@@ -4653,24 +4678,20 @@
    CROSS-PLATFORM 3D RENDERING FIXES
    ============================================ */
 
-/* CRITICAL iOS FIX: Do NOT apply translateZ(0) to .folder-3d-scene itself.
-   On iOS Safari, applying any transform to the element that owns `perspective`
-   collapses the 3D context and makes all children render flat (folder appears empty).
-   GPU promotion via translateZ(0) must only be applied to LEAF elements (covers),
-   never to the perspective container. */
+/*
+  iOS Safari 3D FIX:
+  ─────────────────────────────────────────────
+  NEVER put translateZ(0) on direct children of the `perspective` container.
+  On iOS Safari, this collapses the 3D rendering context and makes the folder
+  appear completely flat / invisible.
 
-/* GPU promotion only on the covers (leaves), NOT the scene container */
-.folder-back,
-.folder-front {
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
-}
+  GPU promotion for the covers is NOT needed — iOS already composites animated
+  elements. Removing the translateZ(0) override lets the `bookOpen` @keyframes
+  (which only animates rotateY) work correctly.
 
-/* folder-front base state: rotateY(0) + GPU hint */
-.folder-front {
-  -webkit-transform: rotateY(0deg) translateZ(0);
-  transform: rotateY(0deg) translateZ(0);
-}
+  The base transform for .folder-front is declared in the rule at line ~3837,
+  so we must NOT re-declare it here, as it would win by specificity order.
+*/
 
 /* Ensure the open animation plays correctly on all platforms */
 .folder-3d-scene.open .folder-front {
@@ -4685,17 +4706,76 @@
   isolation: isolate;
 }
 
-/* Mobile: reduce perspective for performance, use backface-visibility instead of will-change
-   on covers to avoid creating new compositing layers that break preserve-3d on iOS */
+/* Mobile: backface-visibility for performance */
 @media (max-width: 768px) {
-  .folder-3d-scene {
-    perspective: 1200px;
-  }
+  /* perspective is on .folder-perspective-wrapper, NOT here */
 
   .folder-back,
   .folder-front {
-    /* backface-visibility is safer than will-change on iOS for preserve-3d children */
+    /* backface-visibility is safe on iOS for preserve-3d children — will-change is NOT */
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
+  }
+}
+
+/* ============================================
+   ANDROID LEGACY COMPATIBILITY
+   Target: Android 7/8/9 (Chrome 60-74, WebView 60-74)
+   ============================================ */
+
+/* 1. Simplified bookOpen for low-end GPU (reduces keyframe complexity)
+   Old Android GPUs struggle with cubic-bezier on 3D rotations.
+   Using a linear ease makes GPU interpolation predictable and avoids dropped frames. */
+@media (max-width: 768px) and (hover: none) {
+  @keyframes bookOpen {
+    0% {
+      transform: rotateY(0deg);
+    }
+
+    100% {
+      transform: rotateY(-165deg);
+    }
+  }
+
+  .folder-3d-scene.open .folder-front {
+    animation: bookOpen 1.4s ease-out forwards;
+  }
+}
+
+/* 2. Disable backdrop-filter on devices that don't support it efficiently.
+   Old Android Chrome (<76) doesn't support backdrop-filter at all.
+   Use @supports to opt-in only where it works. */
+@supports not (backdrop-filter: blur(1px)) {
+
+  /* Fallback: solid semi-transparent overlay instead of blur */
+  .input-overlay {
+    background: rgba(10, 10, 10, 0.95);
+  }
+}
+
+/* 3. Reduce animation workload on touch devices with limited RAM
+   (targets coarse pointer = touchscreen, no-hover = no mouse) */
+@media (pointer: coarse) and (hover: none) {
+
+  /* Disable the noise SVG background on folder covers — SVG filters are expensive on old Android */
+  .folder-front {
+    background-image: linear-gradient(135deg, #efe2c9 0%, #d4c29b 100%);
+  }
+
+  /* Simpler dossier paper — no SVG noise filter */
+  .dossier-paper {
+    background-image: none;
+  }
+
+  /* Disable the screen noise overlay on app-container (expensive compositing) */
+  .app-container::before {
+    display: none;
+  }
+
+  /* Reduce confetti animation complexity — use simpler timing */
+  @keyframes confettiFall {
+    to {
+      transform: translateY(110vh) rotate(360deg);
+    }
   }
 }
