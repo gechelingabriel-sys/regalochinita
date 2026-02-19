@@ -1,13 +1,121 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 
+
+interface FuseSVGProps {
+  countdown: number; // 0-5
+}
+
+// Self-contained fuse component — spark positioned via getPointAtLength (iOS-safe)
+const FUSE_PATH = "M5,75 C20,60 40,20 65,35 S95,5 120,10";
+const FUSE_TOTAL_LENGTH = 145; // approx pathLength for viewBox 0 0 130 80
+
+const FuseSVG: React.FC<FuseSVGProps> = ({ countdown }) => {
+  const burnPathRef = useRef<SVGPathElement | null>(null);
+  const [spark, setSpark] = useState({ x: 120, y: 10 }); // SVG coords at tip
+
+  // Progress: 0=unburnt (tip), 1=fully burnt (reaches bundle)
+  const progress = 1 - (countdown / 5); // 0→1 as time elapses
+  // dashoffset: starts at TOTAL (hidden), goes toward 0 (fully revealed)
+  // Burn goes from TIP (end of path at 100%) backward to start (bundle end)
+  // We reveal from end → start: dashoffset = TOTAL * (1-progress) means tip burns first
+  const burnedLength = FUSE_TOTAL_LENGTH * progress;
+  const dashOffset = FUSE_TOTAL_LENGTH - burnedLength;
+
+  // Update spark position on the actual SVG path (getPointAtLength)
+  useEffect(() => {
+    const path = burnPathRef.current;
+    if (!path) return;
+    try {
+      const totalLen = path.getTotalLength();
+      // Spark is at the current burn front: from the END of the path going backwards
+      const distFromEnd = totalLen * (1 - progress);
+      // Clamp to valid range
+      const clampedDist = Math.max(0, Math.min(totalLen, distFromEnd));
+      const pt = path.getPointAtLength(totalLen - clampedDist);
+      setSpark({ x: pt.x, y: pt.y });
+    } catch (e) {
+      // Fallback: linear interpolation between tip and start
+      setSpark({ x: 120 - progress * 115, y: 10 + progress * 65 });
+    }
+  }, [progress]);
+
+  return (
+    <svg
+      className="fuse-svg"
+      viewBox="0 0 130 80"
+      style={{
+        position: 'absolute',
+        top: '-72px',
+        right: '-50px',
+        width: '160px',
+        height: '90px',
+        overflow: 'visible',
+        zIndex: 10,
+        pointerEvents: 'none',
+        transform: 'rotateZ(-5deg)',
+      }}
+    >
+      {/* Rope background — full fuse */}
+      <path
+        d={FUSE_PATH}
+        fill="none"
+        stroke="#5a4b3c"
+        strokeWidth="7"
+        strokeLinecap="round"
+        strokeDasharray="3 5"
+        style={{ filter: 'drop-shadow(0 3px 3px rgba(0,0,0,0.5))' }}
+      />
+      {/* Burn overlay — revealed from TIP toward bundle */}
+      <path
+        ref={burnPathRef}
+        d={FUSE_PATH}
+        fill="none"
+        stroke="#ff7700"
+        strokeWidth="7"
+        strokeLinecap="round"
+        strokeDasharray={`${FUSE_TOTAL_LENGTH} ${FUSE_TOTAL_LENGTH}`}
+        strokeDashoffset={dashOffset}
+        style={{
+          filter: 'drop-shadow(0 0 6px #ff4400) drop-shadow(0 0 14px #ffaa00)',
+          transition: 'stroke-dashoffset 0.05s linear',
+        }}
+      />
+      {/* Spark — glowing circle anchored to burn point via getPointAtLength */}
+      {progress < 1 && progress > 0 && (
+        <>
+          {/* Outer glow */}
+          <circle
+            cx={spark.x}
+            cy={spark.y}
+            r={9}
+            fill="rgba(255,200,0,0.25)"
+            style={{ animation: 'sparkPulse 0.07s infinite alternate' }}
+          />
+          {/* Core spark */}
+          <circle
+            cx={spark.x}
+            cy={spark.y}
+            r={4}
+            fill="#fff"
+            style={{
+              filter: 'drop-shadow(0 0 5px #ffcc00) drop-shadow(0 0 12px #ff5500)',
+              animation: 'sparkPulse 0.07s infinite alternate',
+            }}
+          />
+        </>
+      )}
+    </svg>
+  );
+};
+
+const APEROL_VIDEO = "https://res.cloudinary.com/dswpi1pb9/video/upload/v1771271800/asset_apperol_gab_whi7ht.mp4";
+
 interface InnerSanctumLayerProps {
   isActive: boolean;
   playSound: (type: string) => void;
   toggleMusic: () => void;
   musicPlaying: boolean;
 }
-
-const APEROL_VIDEO = "https://res.cloudinary.com/dswpi1pb9/video/upload/v1771271800/asset_apperol_gab_whi7ht.mp4";
 
 export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
   isActive,
@@ -30,6 +138,10 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
   const [countdown, setCountdown] = useState(5.0); // Float for smooth progress
   const [missionTerminated, setMissionTerminated] = useState(false);
   const [explosionPhase, setExplosionPhase] = useState<'none' | 'flash' | 'done'>('none');
+
+  // FUSE SPARK: SVG path ref for getPointAtLength
+  const fusePathRef = useRef<SVGPathElement | null>(null);
+  const [sparkPos, setSparkPos] = useState({ x: 90, y: 10 }); // Start at fuse tip
 
   const audioCtxRef = useRef<AudioContext | null>(null);
 
@@ -901,27 +1013,8 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
 
                 <div className="tnt-wire"></div>
 
-                {/* FUSE */}
-                <svg className="fuse-svg" viewBox="0 0 100 50">
-                  <path d="M10,40 Q30,10 50,25 T90,10" className="fuse-cord-bg" />
-                  <path
-                    d="M10,40 Q30,10 50,25 T90,10"
-                    className="fuse-cord-burn"
-                    style={{
-                      strokeDasharray: 100,
-                      strokeDashoffset: 100 * (1 - (countdown / 5)), // Burns from tip (100) backwards
-                    }}
-                  />
-                </svg>
-                {/* SPARK PARTICLE (Follows path approx) */}
-                <div
-                  className="fuse-spark"
-                  style={{
-                    // Simplified path following logic or just relying on strokeoffset trick
-                    offsetPath: `path("M10,40 Q30,10 50,25 T90,10")`,
-                    offsetDistance: `${100 * (1 - (countdown / 5))}%`
-                  }}
-                />
+                {/* FUSE — self-contained SVG, spark via getPointAtLength (iOS-safe) */}
+                <FuseSVG countdown={countdown} />
               </div>
 
               <div className="countdown-warning-text">
