@@ -3004,6 +3004,8 @@
   height: 100%;
   transform-style: preserve-3d;
   -webkit-transform-style: preserve-3d;
+  z-index: 10;
+  /* Keep strictly behind the vault door (z-index 100) */
 }
 
 /* MOBILE OPTIMIZATION — must be outside the rule block for iOS Safari compatibility */
