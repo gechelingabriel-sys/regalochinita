@@ -697,23 +697,8 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
         setTimeout(() => polaroidFrame.classList.remove('impact-shake'), 500);
       }
 
-      // BUBBLES EXPLOSION (Moved to impact for better context)
-      const centerX = window.innerWidth / 2;
-      const centerY = window.innerHeight / 2;
-
-      for (let i = 0; i < 25; i++) {
-        const b = document.createElement('div');
-        b.className = Math.random() > 0.5 ? 'beer-foam-particle' : 'beer-liquid-particle';
-        b.style.left = `${centerX}px`;
-        b.style.top = `${centerY}px`;
-        b.style.setProperty('--size', `${3 + Math.random() * 8}px`);
-        const ang = Math.random() * Math.PI * 2;
-        const vel = 30 + Math.random() * 100;
-        b.style.setProperty('--tx', `${Math.cos(ang) * vel}px`);
-        b.style.setProperty('--ty', `${Math.sin(ang) * vel - 20}px`);
-        document.body.appendChild(b);
-        setTimeout(() => b.remove(), 1000);
-      }
+      // BUBBLES EXPLOSION (Removed per request)
+      // Removed the 25 particle generation loop here
 
       // GLOBAL SCREEN PULSE
       const pulseContainer = document.querySelector('.app-container');
@@ -806,7 +791,7 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
         <div className={`folder-3d-scene ${(phase === 'revealed' || phase === 'folder-opening') ? 'open' : ''}`}>
 
           {/* FOLDER BACK COVER (Base) */}
-          <div className="folder-back">
+          <div className={`folder-back ${phase === 'revealed' ? 'fully-open' : ''}`}>
             {/* DOSSIER — only the sheet with the evidence photo */}
             <div className="dossier-paper">
               <div className="paper-texture"></div>
