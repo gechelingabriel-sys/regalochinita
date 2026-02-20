@@ -74,6 +74,9 @@
     @apply bg-background text-foreground;
     font-family: 'Helvetica Neue', Arial, sans-serif;
     overflow: hidden;
+    /* Android 16 / Edge Gesture Protections */
+    overscroll-behavior-y: none;
+    overscroll-behavior-x: none;
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
@@ -97,6 +100,8 @@
     height: 100%;
     margin: 0;
     padding: 0;
+    overscroll-behavior: none;
+    /* Crucial for Android 16 / Windows Precision Touchpads */
   }
 }
 
@@ -3860,11 +3865,11 @@
 
 @keyframes bookOpen {
   0% {
-    transform: rotateY(0deg);
+    transform: translateZ(2px) rotateY(0deg);
   }
 
   100% {
-    transform: rotateY(-165deg);
+    transform: translateZ(2px) rotateY(-165deg);
   }
 }
 
@@ -3912,6 +3917,9 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  touch-action: none;
+  /* Crucial for Windows 10 / Android 16 direct interaction */
+  -webkit-tap-highlight-color: transparent;
 }
 
 .evidence-photo-frame {
@@ -3929,6 +3937,14 @@
   object-fit: cover;
   object-position: 50% 38%;
   filter: saturate(1.05) contrast(1.02);
+  /* Windows & Android swipe/drag protections */
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-select: none;
+  pointer-events: none;
+  /* Let the zone handle clicks */
 }
 
 /* Polaroids / Tapes restoration */
@@ -4235,7 +4251,8 @@
     0 8px 25px rgba(0, 0, 0, 0.3),
     0 4px 10px rgba(0, 0, 0, 0.2);
   -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
+  touch-action: none;
+  /* Prevent double-tap zoom or Windows scroll gestures */
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -4645,11 +4662,11 @@
 @media (max-width: 768px) and (hover: none) {
   @keyframes bookOpen {
     0% {
-      transform: rotateY(0deg);
+      transform: translateZ(2px) rotateY(0deg);
     }
 
     100% {
-      transform: rotateY(-165deg);
+      transform: translateZ(2px) rotateY(-165deg);
     }
   }
 
