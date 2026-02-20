@@ -768,7 +768,7 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
 
       {/* 3D FOLDER SCENE — perspective wrapper separates from preserve-3d context (iOS fix) */}
       <div className="folder-perspective-wrapper">
-        <div className={`folder-3d-scene ${(phase === 'revealed' || phase === 'folder-opening') ? 'open' : ''}`}>
+        <div className={`folder-3d-scene ${(phase === 'revealed' || phase === 'folder-opening' || phase === 'case-closed') ? 'open' : ''} ${phase === 'folder-closed' ? 'visible-closed' : ''} ${phase === 'revealed' ? 'revealed' : ''}`}>
 
           {/* FOLDER BACK COVER (Base) */}
           <div className="folder-back">

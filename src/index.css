@@ -2995,9 +2995,13 @@
   transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s ease, visibility 0.5s ease;
 }
 
-.folder-3d-scene.open {
+.folder-3d-scene.open,
+.folder-3d-scene.visible-closed {
   opacity: 1;
   visibility: visible;
+}
+
+.folder-3d-scene.open {
   pointer-events: auto;
 }
 
@@ -3865,13 +3869,15 @@
 .folder-3d-scene.open .folder-front {
   /* OPEN BOOK ANIMATION */
   animation: bookOpen 1.8s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-  /* Ensure it stays "below" the back visually when open? 
-     Actually, when open -180deg, it ends up on the left.
-     But we want to make sure the BACK (document) is interactable and visible. */
+}
+
+/* Apply Z-index swap ONLY when the folder is fully revealed */
+/* This prevents the back cover from popping in front during the opening animation */
+.folder-3d-scene.revealed .folder-front {
   z-index: 50;
 }
 
-.folder-3d-scene.open .folder-back {
+.folder-3d-scene.revealed .folder-back {
   /* Ensure content is prioritized when open */
   z-index: 60;
 }
