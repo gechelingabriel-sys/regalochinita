@@ -791,7 +791,7 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
         <div className={`folder-3d-scene ${(phase === 'revealed' || phase === 'folder-opening') ? 'open' : ''}`}>
 
           {/* FOLDER BACK COVER (Base) */}
-          <div className={`folder-back ${phase === 'revealed' ? 'fully-open' : ''}`}>
+          <div className="folder-back">
             {/* DOSSIER — only the sheet with the evidence photo */}
             <div className="dossier-paper">
               <div className="paper-texture"></div>

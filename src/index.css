@@ -3038,12 +3038,12 @@
 
   /* Hide contents until folder is fully open to prevent early reveal */
   opacity: 0;
-  transition: opacity 0.8s ease 0.6s;
-  /* Wait 0.6s for flap to clear, then fade in */
+  transition: opacity 0.6s ease 0.5s;
+  /* Wait 0.5s for flap to start opening, then fade in */
 }
 
-/* Reveal dossier paper only when the back cover gets the fully-open class */
-.folder-back.fully-open .dossier-paper {
+/* Reveal dossier paper when the folder itself gets the open class */
+.folder-3d-scene.open .dossier-paper {
   opacity: 1;
 }
 
