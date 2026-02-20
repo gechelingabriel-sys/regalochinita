@@ -823,7 +823,7 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
                 <div
                   className="polaroid-wrapper"
                   style={{
-                    transform: 'rotate(2deg)', // Static rotation only
+                    transform: 'translateZ(10px) rotate(2deg)', // Force 3D context separation for iOS
                     transition: 'none', // No transitions to avoid interference
                     transformStyle: 'preserve-3d',
                     WebkitTransformStyle: 'preserve-3d'

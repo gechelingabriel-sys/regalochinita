@@ -102,19 +102,26 @@
 
 /* App container with perspective */
 .app-container {
-  width: 100%;
+  width: 100vw;
   height: 100dvh;
-  /* Android fix */
-  position: relative;
-  perspective: 1500px;
-  /* iOS 3D Context Fix */
-  transform-style: preserve-3d;
-  -webkit-transform-style: preserve-3d;
+  position: fixed;
+  top: 0;
+  left: 0;
+  /* Expert 3D Host Config - ONLY Perspective here */
+  perspective: 2500px;
+  -webkit-perspective: 2500px;
+  perspective-origin: center center;
+  -webkit-perspective-origin: center center;
+
   display: flex;
   justify-content: center;
   align-items: center;
   background: radial-gradient(circle at center, #2c3035 0%, #111 80%, #000 100%);
   overflow: hidden;
+
+  /* Important: Host itself does NOT need preserve-3d if it only hosts 3D children */
+  transform-style: flat;
+  -webkit-transform-style: flat;
 }
 
 /* Desktop Preview Mode - Simulates a mobile device */
@@ -142,17 +149,19 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
+  gap: 32px;
   transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
-  padding: 20px;
+  padding: 24px;
   pointer-events: none;
   opacity: 0;
   z-index: 2;
   transform: scale(0.95);
-  /* CRITICAL IO FIX: Prevent flattening of 3D context when transformed */
+  /* Continuous 3D Chain */
   transform-style: preserve-3d;
   -webkit-transform-style: preserve-3d;
+  overflow: visible;
 }
 
 .layer.active {
@@ -750,11 +759,12 @@
 
 /* Mobile-safe sizing for the video stage (iOS/Android address bar + notches) */
 #reveal-layer.layer {
-  /* Respect safe areas while keeping the stage centered */
-  padding-top: calc(12px + env(safe-area-inset-top));
-  padding-right: calc(12px + env(safe-area-inset-right));
-  padding-bottom: calc(16px + env(safe-area-inset-bottom));
-  padding-left: calc(12px + env(safe-area-inset-left));
+  /* Prevent ID selector from breaking the grid centering */
+  display: grid !important;
+  place-items: center !important;
+  padding: 20px;
+  /* Safe area adjustments that don't break centering */
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
 }
 
 .shirt-stage {
@@ -1502,12 +1512,14 @@
   background: linear-gradient(145deg, hsl(var(--steel-light)) 0%, hsl(var(--steel-shadow)) 100%);
   transform: translateY(-100%);
   z-index: 100;
+  /* Safe flex centering */
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
+  align-items: center;
   box-shadow: inset 0 0 100px #000;
   border-bottom: 5px solid #444;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
 }
 
 .final-vault-door.slam-down {
@@ -2967,8 +2979,8 @@
   flex: 0 0 auto;
   transform-style: preserve-3d;
   -webkit-transform-style: preserve-3d;
-  /* NOTE: will-change:filter removed — it creates a stacking context that flattens 3D on iOS */
-  will-change: transform;
+  transform: translateZ(0.1px);
+  /* micro-hack to force hardware composite layer */
 }
 
 /* ============================================
@@ -2977,22 +2989,18 @@
    Combining perspective + preserve-3d on the same element flattens 3D in iOS.
    ============================================ */
 .folder-perspective-wrapper {
-  perspective: 2500px;
-  -webkit-perspective: 2500px;
-  /* Does NOT have preserve-3d — it is just the perspective host */
+  /* Consistently centered host */
   display: flex;
-  align-items: center;
   justify-content: center;
-  flex: 0 0 auto;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
 }
 
 /* MOBILE OPTIMIZATION — must be outside the rule block for iOS Safari compatibility */
 @media (max-width: 768px) {
-  .folder-perspective-wrapper {
-    perspective: 1200px;
-    -webkit-perspective: 1200px;
-  }
-
   .folder-3d-scene {
     width: 80vw;
     height: calc(80vw * 1.414);
@@ -3754,9 +3762,7 @@
 /* --- BACK COVER --- */
 .folder-back {
   z-index: 1;
-  /* ANDROID FIX: Force GPU layer promotion */
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+  transform: translateZ(-1px);
   touch-action: manipulation;
 }
 
@@ -3769,7 +3775,7 @@
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  transform: rotateY(0deg);
+  transform: translateZ(1px) rotateY(0deg);
   /* CRITICAL iOS + Android FIX: overflow:hidden on a 3D-rotating element causes compositor
      layer issues on both Safari and Chrome for Android. Use visible + border-radius only. */
   overflow: visible;
@@ -3781,9 +3787,6 @@
   /* CRITICAL iOS FIX: clip-path creates a stacking context that flattens preserve-3d on iOS Safari.
      Use border-radius instead — it does NOT break 3D contexts. */
   border-radius: 4px 8px 8px 4px;
-  /* ANDROID FIX: Force GPU layer promotion for smooth 3D rotation */
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
   /* ANDROID FIX: Prevent double-tap zoom on the folder cover */
   touch-action: manipulation;
 }
@@ -4700,45 +4703,51 @@
    @supports (-webkit-touch-callout: none) targets iOS Safari only.
    ============================================ */
 @supports (-webkit-touch-callout: none) {
+  /* iOS SAFARI DEEP 3D AUDIT */
 
-  /* Ensure the 3D chain is unbroken */
+  /* 1. Ensure perspective origin is exactly center */
+  .app-container,
+  .folder-perspective-wrapper {
+    perspective-origin: 50% 50% !important;
+    -webkit-perspective-origin: 50% 50% !important;
+    transform-style: flat !important;
+    -webkit-transform-style: flat !important;
+  }
+
+  /* 2. All 3D descendants MUST have preserve-3d */
   .layer,
   #inner-sanctum,
+  .vault-box,
+  .vault-door-frame,
   .folder-3d-scene,
   .folder-back,
   .folder-front,
   .dossier-paper,
   .dossier-body-section,
-  .polaroid-wrapper {
+  .polaroid-wrapper,
+  .tnt-bundle,
+  .final-vault-door {
     -webkit-transform-style: preserve-3d;
     transform-style: preserve-3d;
   }
 
-  /* Remove will-change on iOS — it creates an auto stacking context
-     that flattens 3D transforms on Safari */
+  /* 3. Disable anything that flattens context */
   .folder-3d-scene {
     will-change: auto;
   }
 
-  /* The perspective wrapper must NOT have any overflow or filter
-     that would collapse the 3D context on iOS */
-  .folder-perspective-wrapper {
-    overflow: visible;
-    -webkit-transform-style: flat;
-    /* Perspective host must be flat, not preserve-3d */
-    transform-style: flat;
-  }
-
-  /* Disable noise SVG filter on folder covers — SVG filters collapse
-     3D stacking context on iOS Safari */
-  .folder-front,
-  .folder-back {
-    background-image: linear-gradient(135deg, #efe2c9 0%, #d4c29b 100%);
-  }
-
-  /* Ensure the app-container layer class doesn't add overflow:hidden */
   .app-container,
-  .layer {
-    overflow: visible;
+  .layer,
+  .folder-perspective-wrapper {
+    overflow: visible !important;
+  }
+
+  /* 4. Fix Centering for ID selectors */
+  #vault-layer,
+  #voucher-layer,
+  #inner-sanctum {
+    display: grid !important;
+    place-items: center !important;
+    align-content: center !important;
   }
 }
