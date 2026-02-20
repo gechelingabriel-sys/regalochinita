@@ -763,26 +763,6 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
 
   return (
     <div id="inner-sanctum" className={`layer ${isActive ? 'active' : ''}`}>
-      {/* DOOR */}
-      {phase === 'door' && (
-        <div className={`final-vault-door slam-down ${doorOpening ? 'opening' : ''}`}>
-          <div className="final-door-frame">
-            <div className="combo-dial">
-              <div className="dial-marks" />
-              <div className="dial-inner" />
-            </div>
-            <div className="handle-base">
-              <div className="handle-spinner" style={{ transform: `rotate(${handleRotation}deg)` }}>
-                <div className="spoke spoke-1" />
-                <div className="spoke spoke-2" />
-                <div className="spoke spoke-3" />
-                <div className="handle-cap" />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* AMBIENT BACKGROUND - REMOVED TO PREVENT GHOSTING */}
       {/* <div className={`ambient-background ${phase === 'revealed' ? 'visible' : ''}`} /> */}
 
@@ -932,6 +912,26 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
         </div>
 
       </div>{/* end folder-perspective-wrapper */}
+
+      {/* DOOR - Moved below folder in DOM to natively force Safari Z-index priority */}
+      {phase === 'door' && (
+        <div className={`final-vault-door slam-down ${doorOpening ? 'opening' : ''}`}>
+          <div className="final-door-frame">
+            <div className="combo-dial">
+              <div className="dial-marks" />
+              <div className="dial-inner" />
+            </div>
+            <div className="handle-base">
+              <div className="handle-spinner" style={{ transform: `rotate(${handleRotation}deg)` }}>
+                <div className="spoke spoke-1" />
+                <div className="spoke spoke-2" />
+                <div className="spoke spoke-3" />
+                <div className="handle-cap" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ACTION BUTTONS — outside the folder, only visible after reveal */}
       {
