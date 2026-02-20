@@ -708,8 +708,9 @@ export const InnerSanctumLayer: React.FC<InnerSanctumLayerProps> = ({
         b.style.top = `${centerY}px`;
         b.style.setProperty('--size', `${3 + Math.random() * 8}px`);
         const ang = Math.random() * Math.PI * 2;
-        const vel = 10 + Math.random() * 70;
-        b.style.transform = `translate(${Math.cos(ang) * vel}px, ${Math.sin(ang) * vel - 20}px)`;
+        const vel = 30 + Math.random() * 100;
+        b.style.setProperty('--tx', `${Math.cos(ang) * vel}px`);
+        b.style.setProperty('--ty', `${Math.sin(ang) * vel - 20}px`);
         document.body.appendChild(b);
         setTimeout(() => b.remove(), 1000);
       }

@@ -4622,17 +4622,7 @@
   isolation: isolate;
 }
 
-/* Mobile: backface-visibility for performance */
-@media (max-width: 768px) {
-  /* perspective is on .folder-perspective-wrapper, NOT here */
-
-  .folder-back,
-  .folder-front {
-    /* backface-visibility is safe on iOS for preserve-3d children — will-change is NOT */
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-  }
-}
+/* Mobile: backface-visibility for performance removed because it breaks iOS front cover */
 
 /* ============================================
    ANDROID LEGACY COMPATIBILITY
@@ -4761,5 +4751,39 @@
     min-height: 100dvh;
     justify-content: center !important;
     align-items: center !important;
+  }
+}
+
+/* CHEERS PARTICLES EXPORT */
+.beer-foam-particle,
+.beer-liquid-particle {
+  position: fixed;
+  width: var(--size, 5px);
+  height: var(--size, 5px);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 999999;
+  animation: particleExplode 1s cubic-bezier(0.175, 0.885, 0.32, 1) forwards;
+}
+
+.beer-foam-particle {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+}
+
+.beer-liquid-particle {
+  background: rgba(255, 170, 0, 0.8);
+  box-shadow: 0 0 4px rgba(255, 170, 0, 0.5);
+}
+
+@keyframes particleExplode {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(var(--tx, 0), var(--ty, 0)) scale(0);
+    opacity: 0;
   }
 }
