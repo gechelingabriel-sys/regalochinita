@@ -103,6 +103,8 @@
 /* App container with perspective */
 .app-container {
   width: 100vw;
+  height: 100vh;
+  /* Fallback for older browsers like Android 8 */
   height: 100dvh;
   position: fixed;
   top: 0;
@@ -3775,7 +3777,8 @@
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  transform: translateZ(1px) rotateY(0deg);
+  transform: translateZ(2px) rotateY(0deg);
+  /* Exaggerate Z to prevent clipping on iOS */
   /* CRITICAL iOS + Android FIX: overflow:hidden on a 3D-rotating element causes compositor
      layer issues on both Safari and Chrome for Android. Use visible + border-radius only. */
   overflow: visible;
@@ -4714,6 +4717,12 @@
     -webkit-transform-style: flat !important;
   }
 
+  /* CRITICAL: Explicitly set perspective back on wrapper if overridden */
+  .folder-perspective-wrapper {
+    perspective: 2500px !important;
+    -webkit-perspective: 2500px !important;
+  }
+
   /* 2. All 3D descendants MUST have preserve-3d */
   .layer,
   #inner-sanctum,
@@ -4742,12 +4751,15 @@
     overflow: visible !important;
   }
 
-  /* 4. Fix Centering for ID selectors */
+  /* 4. Fix Centering for ID selectors and maintain flex mapping */
   #vault-layer,
   #voucher-layer,
   #inner-sanctum {
-    display: grid !important;
-    place-items: center !important;
-    align-content: center !important;
+    display: flex !important;
+    min-height: 100vh;
+    /* Legacy Android fallback */
+    min-height: 100dvh;
+    justify-content: center !important;
+    align-items: center !important;
   }
 }
